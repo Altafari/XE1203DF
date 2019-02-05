@@ -1,0 +1,39 @@
+/*
+ * xe1203_driver.h
+ * Defines functions to communicate with XE1203 chip via STM32 Cube HAL SPI driver
+ */
+#include "xe1203_driver.h"
+
+static SPI_HandleTypeDef *pHspi;
+static uint8_t rx_buffer[3];
+static uint8_t tx_buffer[3];
+
+
+void XE_1203_SetSpiHandle(SPI_HandleTypeDef *p_Hspi)
+{
+    pHspi = p_Hspi;
+    tx_buffer[2] = 0xFF;
+}
+
+HAL_StatusTypeDef XE_1203_WriteData(uint8_t addr, uint8_t data)
+{
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+    tx_buffer[0] = addr & 0b00011111;
+    tx_buffer[0] |= 0b10000000;
+    tx_buffer[1] = data;
+    HAL_StatusTypeDef res = HAL_SPI_Transmit(pHspi, tx_buffer, 3, 100);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+    return res;
+}
+
+HAL_StatusTypeDef XE1203_ReadData(uint8_t addr, uint8_t *data)
+{
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+    tx_buffer[0] = addr & 0b00011111;
+    tx_buffer[0] |= 0b10100000;
+    tx_buffer[1] = 0xFF;
+    HAL_StatusTypeDef res = HAL_SPI_TransmitReceive(pHspi, tx_buffer, rx_buffer, 3, 100);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+    *data = rx_buffer[1];
+    return res;
+}
