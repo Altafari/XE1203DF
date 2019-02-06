@@ -58,8 +58,6 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 
-uint8_t rx_buffer[2];
-uint8_t tx_buffer[2];
 uint8_t text_buffer[128];
 
 /* USER CODE END PV */
@@ -75,7 +73,7 @@ static void MX_TIM2_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
-
+static void XE1203_Configure();
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -99,7 +97,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  XE_1203_SetSpiHandle(&hspi2);
+  XE1203_SetSpiHandle(&hspi2);
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -117,21 +115,15 @@ int main(void)
   MX_ADC2_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-
-  tx_buffer[0] = 0b10101010;
-  tx_buffer[1] = 0b00000001;
-
+  XE1203_Configure();
+  XE1203_WriteDataStruct(XE1203_Config.buffer);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-      XE_1203_WriteData(1, 0x81);
-      HAL_StatusTypeDef res = XE1203_ReadData(1, rx_buffer);
-      sprintf((char*) text_buffer, "Data received: %X, code %d\n", rx_buffer[0], res);
-      HAL_UART_Transmit(&huart2, text_buffer, strlen((char*) text_buffer), 100);
-      HAL_Delay(3);
+
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
@@ -396,7 +388,30 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+static void XE1203_Configure()
+{
+    XE1203_Config.ConfigSwitch = 0x7F;
+    XE1203_Config.RTParam0 = 0; // BW 200 kHz, ClkOut off
+    XE1203_Config.RTParam1 = 0x11; // IQ on, band 433 MHz
+    XE1203_Config.FSParam0 = 0;
+    XE1203_Config.FSParam1 = 0;
+    XE1203_Config.FSParam2 = 0;
+    XE1203_Config.SWParam0 = 0x80; // Rx mode A
+    XE1203_Config.SWParam1 = 0x01; // Freq lo
+    XE1203_Config.SWParam2 = 0x02; // Freq Hi
+    XE1203_Config.SWParam3 = 0;
+    XE1203_Config.SWParam4 = 0;
+    XE1203_Config.SWParam5 = 0;
+    XE1203_Config.ADParam0 = 0x0C; // 9.75 MHz ClkOut BB BW calibration on
+    XE1203_Config.ADParam1 = 0;
+    XE1203_Config.ADParam2 = 0;
+    XE1203_Config.ADParam3 = 0;
+    XE1203_Config.ADParam4 = 0;
+    XE1203_Config.Pattern0 = 0;
+    XE1203_Config.Pattern1 = 0;
+    XE1203_Config.Pattern2 = 0;
+    XE1203_Config.Pattern3 = 0;
+}
 /* USER CODE END 4 */
 
 /**
