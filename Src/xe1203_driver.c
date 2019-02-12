@@ -40,7 +40,8 @@ HAL_StatusTypeDef XE1203_ReadData(uint8_t addr, uint8_t *pData)
     return res;
 }
 
-void XE1203_WriteDataStruct(uint8_t *pReg) {
+void XE1203_WriteDataStruct(uint8_t *pReg)
+{
     for(uint8_t i = 0; i < sizeof(XE1203_RegStruct); i++)
     {
         XE1203_WriteData(i, pReg[i]);

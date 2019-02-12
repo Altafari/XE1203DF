@@ -75,6 +75,8 @@
 
 /* USER CODE BEGIN Private defines */
 
+#define ADC_BUFF_LEN 256
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
