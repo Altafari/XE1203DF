@@ -60,15 +60,10 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+static uint8_t run_dsp_bit_barrier;
 
-uint8_t text_buffer[128];
-uint8_t run_dsp;
-
-uint16_t adc1_buffer[ADC_BUFF_LEN];
-uint16_t adc2_buffer[ADC_BUFF_LEN];
-
-uint16_t result_buffer[ADC_BUFF_LEN / 2];
-
+static uint16_t adc1_buffer[ADC_BUFF_LEN];
+static uint16_t adc2_buffer[ADC_BUFF_LEN];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -139,13 +134,6 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-      if (run_dsp) {
-          HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);
-          DSP_CORE_ProcessBufferI(adc1_buffer);
-          DSP_CORE_ProcessBufferI(adc1_buffer);
-          HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
-          run_dsp = 0;
-      }
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
@@ -169,7 +157,7 @@ void SystemClock_Config(void)
     */
   __HAL_RCC_PWR_CLK_ENABLE();
 
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
     /**Initializes the CPU, AHB and APB busses clocks 
     */
@@ -179,7 +167,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 8;
   RCC_OscInitStruct.PLL.PLLN = 336;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 2;
   RCC_OscInitStruct.PLL.PLLR = 2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
@@ -193,21 +181,21 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
 
     /**Configure the Systick interrupt time 
     */
-  HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
+  HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/8000);
 
     /**Configure the Systick 
     */
-  HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
+  HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK_DIV8);
 
   /* SysTick_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
@@ -431,9 +419,31 @@ static void MX_GPIO_Init(void)
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
 {
     if (hadc == &hadc1) {
-        run_dsp = 1;
+        run_dsp_bit_barrier |= 1;
+    }
+    if (hadc == &hadc2) {
+        run_dsp_bit_barrier |= 2;
+    }
+    if (run_dsp_bit_barrier == 3) {
+        DSP_CORE_ProcessBuffer(adc1_buffer, adc2_buffer);
+        run_dsp_bit_barrier = 0;
     }
 }
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+    if (hadc == &hadc1) {
+        run_dsp_bit_barrier |= 1;
+    }
+    if (hadc == &hadc2) {
+        run_dsp_bit_barrier |= 2;
+    }
+    if (run_dsp_bit_barrier == 3) {
+        DSP_CORE_ProcessBuffer(&adc1_buffer[ADC_BUFF_LEN / 2], &adc2_buffer[ADC_BUFF_LEN / 2]);
+        run_dsp_bit_barrier = 0;
+    }
+}
+
 
 static void XE1203_Configure()
 {

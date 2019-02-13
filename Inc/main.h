@@ -75,7 +75,7 @@
 
 /* USER CODE BEGIN Private defines */
 
-#define ADC_BUFF_LEN 256
+#define ADC_BUFF_LEN 512
 
 /* USER CODE END Private defines */
 
