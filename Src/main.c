@@ -310,7 +310,7 @@ static void MX_SPI2_Init(void)
 static void MX_TIM1_Init(void)
 {
 
-  TIM_ClockConfigTypeDef sClockSourceConfig;
+  TIM_SlaveConfigTypeDef sSlaveConfig;
   TIM_MasterConfigTypeDef sMasterConfig;
   TIM_OC_InitTypeDef sConfigOC;
   TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig;
@@ -326,13 +326,14 @@ static void MX_TIM1_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
 
-  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
+  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_EXTERNAL1;
+  sSlaveConfig.InputTrigger = TIM_TS_ITR1;
+  if (HAL_TIM_SlaveConfigSynchronization(&htim1, &sSlaveConfig) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
