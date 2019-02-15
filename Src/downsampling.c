@@ -1,11 +1,10 @@
-#include <inttypes.h>
 #include <stm32f446xx.h>
+#include "downsampling.h"
 #include "arm_math.h"
 #include "stm32f4xx_hal.h"
 
 #define FIR_STAGE1_N_TAPS 32
 #define FIR_STAGE2_N_TAPS 128
-#define FIR_STAGE1_BLOCK_SIZE 256
 #define FIR_STAGE2_BLOCK_SIZE 64
 #define FIR_STAGE1_M 4
 #define FIR_STAGE2_M 8
@@ -33,7 +32,8 @@ static q15_t fir_stage2_input[FIR_STAGE2_BLOCK_SIZE];
 static q15_t fir_stage2_state_i[FIR_STAGE2_BLOCK_SIZE + FIR_STAGE2_N_TAPS - 1];
 static q15_t fir_stage2_state_q[FIR_STAGE2_BLOCK_SIZE + FIR_STAGE2_N_TAPS - 1];
 
-q15_t temp_buffer[FIR_STAGE1_BLOCK_SIZE];
+q15_t output_buffer_i[FIR_OUTPUT_BLOCK_SIZE];
+q15_t output_buffer_q[FIR_OUTPUT_BLOCK_SIZE];
 
 static void convert12bitU_to_q15(uint16_t* pIn, q15_t* pOut, uint16_t nSamples);
 
@@ -48,10 +48,10 @@ void DSP_CORE_ProcessBuffer(uint16_t* pBuff_i, uint16_t* pBuff_q) {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);
     convert12bitU_to_q15(pBuff_i, fir_stage1_input, FIR_STAGE1_BLOCK_SIZE);
     arm_fir_decimate_fast_q15(&fir_stage1_i, fir_stage1_input, fir_stage2_input, FIR_STAGE1_BLOCK_SIZE);
-    arm_fir_decimate_fast_q15(&fir_stage2_i, fir_stage2_input, temp_buffer, FIR_STAGE2_BLOCK_SIZE);
+    arm_fir_decimate_fast_q15(&fir_stage2_i, fir_stage2_input, output_buffer_i, FIR_STAGE2_BLOCK_SIZE);
     convert12bitU_to_q15(pBuff_q, fir_stage1_input, FIR_STAGE1_BLOCK_SIZE);
     arm_fir_decimate_fast_q15(&fir_stage1_q, fir_stage1_input, fir_stage2_input, FIR_STAGE1_BLOCK_SIZE);
-    arm_fir_decimate_fast_q15(&fir_stage2_q, fir_stage2_input, temp_buffer, FIR_STAGE2_BLOCK_SIZE);
+    arm_fir_decimate_fast_q15(&fir_stage2_q, fir_stage2_input, output_buffer_q, FIR_STAGE2_BLOCK_SIZE);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
 }
 

@@ -37,13 +37,13 @@
   ******************************************************************************
   */
 /* Includes ------------------------------------------------------------------*/
+#include <downsampling.h>
 #include "main.h"
 #include "stm32f4xx_hal.h"
 
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include "xe1203_driver.h"
-#include "dsp_core.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
