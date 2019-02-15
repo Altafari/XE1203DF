@@ -32,19 +32,19 @@ static q15_t fir_stage2_input[FIR_STAGE2_BLOCK_SIZE];
 static q15_t fir_stage2_state_i[FIR_STAGE2_BLOCK_SIZE + FIR_STAGE2_N_TAPS - 1];
 static q15_t fir_stage2_state_q[FIR_STAGE2_BLOCK_SIZE + FIR_STAGE2_N_TAPS - 1];
 
-q15_t output_buffer_i[FIR_OUTPUT_BLOCK_SIZE];
-q15_t output_buffer_q[FIR_OUTPUT_BLOCK_SIZE];
+static q15_t output_buffer_i[FIR_OUTPUT_BLOCK_SIZE];
+static q15_t output_buffer_q[FIR_OUTPUT_BLOCK_SIZE];
 
 static void convert12bitU_to_q15(uint16_t* pIn, q15_t* pOut, uint16_t nSamples);
 
-void DSP_CORE_Init() {
+void DSP_FIR_init() {
     arm_fir_decimate_init_q15(&fir_stage1_i, FIR_STAGE1_N_TAPS, FIR_STAGE1_M, fir_stage1_coeff, fir_stage1_state_i, FIR_STAGE1_BLOCK_SIZE);
     arm_fir_decimate_init_q15(&fir_stage1_q, FIR_STAGE1_N_TAPS, FIR_STAGE1_M, fir_stage1_coeff, fir_stage1_state_q, FIR_STAGE1_BLOCK_SIZE);
     arm_fir_decimate_init_q15(&fir_stage2_i, FIR_STAGE2_N_TAPS, FIR_STAGE2_M, fir_stage2_coeff, fir_stage2_state_i, FIR_STAGE2_BLOCK_SIZE);
     arm_fir_decimate_init_q15(&fir_stage2_q, FIR_STAGE2_N_TAPS, FIR_STAGE2_M, fir_stage2_coeff, fir_stage2_state_q, FIR_STAGE2_BLOCK_SIZE);
 }
 
-void DSP_CORE_ProcessBuffer(uint16_t* pBuff_i, uint16_t* pBuff_q) {
+void DSP_FIR_processBuffer(uint16_t* pBuff_i, uint16_t* pBuff_q) {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);
     convert12bitU_to_q15(pBuff_i, fir_stage1_input, FIR_STAGE1_BLOCK_SIZE);
     arm_fir_decimate_fast_q15(&fir_stage1_i, fir_stage1_input, fir_stage2_input, FIR_STAGE1_BLOCK_SIZE);

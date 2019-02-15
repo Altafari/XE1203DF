@@ -10,8 +10,8 @@
  extern "C" {
 #endif
 
-void DSP_CORE_Init();
-void DSP_CORE_ProcessBuffer(uint16_t* pBuffI, uint16_t* pBuffQ);
+void DSP_FIR_init();
+void DSP_FIR_processBuffer(uint16_t* pBuffI, uint16_t* pBuffQ);
 
 #ifdef __cplusplus
 }

@@ -129,7 +129,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   XE1203_Configure();
   XE1203_WriteDataStruct(XE1203_Config.buffer);
-  DSP_CORE_Init();
+  DSP_FIR_init();
 
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*) adc1_buffer, ADC_BUFF_LEN);
   HAL_ADC_Start_DMA(&hadc2, (uint32_t*) adc2_buffer, ADC_BUFF_LEN);
@@ -499,7 +499,7 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
         run_dsp_bit_barrier |= 2;
     }
     if (run_dsp_bit_barrier == 3) {
-        DSP_CORE_ProcessBuffer(adc1_buffer, adc2_buffer);
+        DSP_FIR_processBuffer(adc1_buffer, adc2_buffer);
         run_dsp_bit_barrier = 0;
     }
 }
@@ -513,7 +513,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
         run_dsp_bit_barrier |= 2;
     }
     if (run_dsp_bit_barrier == 3) {
-        DSP_CORE_ProcessBuffer(&adc1_buffer[ADC_BUFF_LEN / 2], &adc2_buffer[ADC_BUFF_LEN / 2]);
+        DSP_FIR_processBuffer(&adc1_buffer[ADC_BUFF_LEN / 2], &adc2_buffer[ADC_BUFF_LEN / 2]);
         run_dsp_bit_barrier = 0;
     }
 }
