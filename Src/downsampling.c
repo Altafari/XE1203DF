@@ -1,5 +1,6 @@
 #include <stm32f446xx.h>
 #include "downsampling.h"
+#include "fourier_analysis.h"
 #include "arm_math.h"
 #include "stm32f4xx_hal.h"
 
@@ -53,6 +54,7 @@ void DSP_FIR_processBuffer(uint16_t* pBuff_i, uint16_t* pBuff_q) {
     arm_fir_decimate_fast_q15(&fir_stage1_q, fir_stage1_input, fir_stage2_input, FIR_STAGE1_BLOCK_SIZE);
     arm_fir_decimate_fast_q15(&fir_stage2_q, fir_stage2_input, output_buffer_q, FIR_STAGE2_BLOCK_SIZE);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
+    DSP_FFT_receiveData(output_buffer_i, output_buffer_q);
 }
 
 static void convert12bitU_to_q15(uint16_t* pIn, q15_t* pOut, uint16_t nSamples) {

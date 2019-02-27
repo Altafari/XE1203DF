@@ -37,13 +37,14 @@
   ******************************************************************************
   */
 /* Includes ------------------------------------------------------------------*/
-#include <downsampling.h>
 #include "main.h"
 #include "stm32f4xx_hal.h"
 
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include "xe1203_driver.h"
+#include "downsampling.h"
+#include "fourier_analysis.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -71,12 +72,12 @@ static uint16_t adc2_buffer[ADC_BUFF_LEN];
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
-static void MX_USART2_UART_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM1_Init(void);
+static void MX_USART2_UART_Init(void);
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
                                 
@@ -120,16 +121,17 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_USART2_UART_Init();
   MX_SPI2_Init();
   MX_ADC2_Init();
   MX_TIM2_Init();
   MX_ADC1_Init();
   MX_TIM1_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   XE1203_Configure();
   XE1203_WriteDataStruct(XE1203_Config.buffer);
   DSP_FIR_init();
+  DSP_FFT_init();
 
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*) adc1_buffer, ADC_BUFF_LEN);
   HAL_ADC_Start_DMA(&hadc2, (uint32_t*) adc2_buffer, ADC_BUFF_LEN);
@@ -272,7 +274,7 @@ static void MX_ADC2_Init(void)
 
     /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
     */
-  sConfig.Channel = ADC_CHANNEL_1;
+  sConfig.Channel = ADC_CHANNEL_9;
   sConfig.Rank = 1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
@@ -410,7 +412,7 @@ static void MX_USART2_UART_Init(void)
 {
 
   huart2.Instance = USART2;
-  huart2.Init.BaudRate = 9600;
+  huart2.Init.BaudRate = 115200;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
