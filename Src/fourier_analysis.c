@@ -8,8 +8,10 @@
 #define FFT_SIZE 1024
 #define NUM_FRAMES_TO_PROCESS 50
 #define FFT_WINDOW_SIZE (FIR_OUTPUT_BLOCK_SIZE * NUM_FRAMES_TO_PROCESS)
+#define DB_NORM 150.0f
+#define TRIPLET_DELTA (FFT_SIZE / (FIR_OUTPUT_BLOCK_SIZE * 2))
 
-static q15_t switch_window[FIR_OUTPUT_BLOCK_SIZE] = { 32767, 32767, 32767, 32767, 32767, 32767, 32767, 32767  };
+static q15_t switch_window[FIR_OUTPUT_BLOCK_SIZE];
 static q15_t fft_window[FFT_WINDOW_SIZE * 2];
 
 static uint8_t bufferIdx;
@@ -24,11 +26,18 @@ static q15_t fftBuffer[FFT_SIZE * 2];
 static q31_t fftBufferA[FFT_SIZE * 2];
 static q31_t fftBufferB[FFT_SIZE * 2];
 
+static float fftMagnitudeA[FFT_SIZE];
+static float fftMagnitudeB[FFT_SIZE];
+
 static void DSP_FFT_fillBlackmanWindowQ15(q15_t* pBuffer, uint16_t size);
 static void DSP_FFT_fillBlackmanWindowComplexQ15(q15_t* pBuffer, uint16_t size);
 static q15_t DSP_FFT_computeBlackmanWindow(uint16_t n, uint16_t size);
 static void DSP_FFT_applyZeroPaddingAndWindowComplexQ15(q15_t* pData, q15_t* pBuffer);
 static void DSP_FFT_convertQ15BufferToQ31(q15_t* pQ15, q31_t* pQ31);
+static void DSP_FFT_computeMagnitude(q31_t* pData, float* pBuffer);
+static uint16_t DSP_FFT_findMaximumTriplet(float* pData, uint16_t start, uint16_t end);
+static float DSP_FFT_computeDeltaPhi(q31_t* pDataA, q31_t* pDataB, uint16_t idx);
+static float DSP_FFT_findPeakLocation(float* pData, uint16_t idx);
 
 void DSP_FFT_init() {
     frameCtr = 0;
@@ -82,6 +91,20 @@ void DSP_FFT_processDataFromLoop() {
     DSP_FFT_convertQ15BufferToQ31(fftBuffer, fftBufferB);
     arm_cfft_q31(&arm_cfft_sR_q31_len1024, fftBufferA, 0, 1);
     arm_cfft_q31(&arm_cfft_sR_q31_len1024, fftBufferB, 0, 1);
+    DSP_FFT_computeMagnitude(fftBufferA, fftMagnitudeA);
+    DSP_FFT_computeMagnitude(fftBufferB, fftMagnitudeB);
+    uint16_t idxA = DSP_FFT_findMaximumTriplet(fftMagnitudeA, FFT_SIZE / 2 + TRIPLET_DELTA, FFT_SIZE - TRIPLET_DELTA * 3);
+    uint16_t idxB = DSP_FFT_findMaximumTriplet(fftMagnitudeB, FFT_SIZE / 2 + TRIPLET_DELTA, FFT_SIZE - TRIPLET_DELTA * 3);
+    float peakA = DSP_FFT_findPeakLocation(fftMagnitudeA, idxA);
+    float peakB = DSP_FFT_findPeakLocation(fftMagnitudeB, idxB);
+    volatile float peakDelta = peakA - peakB;
+    if (fabs(peakDelta) > 3) return;
+    if (idxA != 55555) {
+        float dPhi = DSP_FFT_computeDeltaPhi(fftBufferA, fftBufferB, idxA);
+        if (dPhi < 555.0) {
+            bufferReady = 0;
+        }
+    }
 }
 
 void DSP_FFT_applyZeroPaddingAndWindowComplexQ15(q15_t* pData, q15_t* pBuffer) {
@@ -116,4 +139,41 @@ void DSP_FFT_convertQ15BufferToQ31(q15_t* pQ15, q31_t* pQ31) {
         *pQ31++ = (*pQ15++) << 16;
         *pQ31++ = (*pQ15++) << 16;
     }
+}
+
+void DSP_FFT_computeMagnitude(q31_t* pData, float* pBuffer) {
+    for (uint16_t i = 0; i < FFT_SIZE * 2; i += 2) {
+        float re = (float) *pData++;
+        float im = (float) *pData++;
+        *pBuffer++ = log10(re * re + im * im) * 10 - DB_NORM;
+    }
+}
+
+uint16_t DSP_FFT_findMaximumTriplet(float* pData, uint16_t start, uint16_t end) {
+    float currMaxMag = -INFINITY;
+    uint16_t currMaxIdx = 0;
+    for (uint16_t i = start; i < end; i++) {
+        float res = pData[i - TRIPLET_DELTA] + pData[i] + pData[i + TRIPLET_DELTA];
+        if (res > currMaxMag) {
+            currMaxMag = res;
+            currMaxIdx = i;
+        }
+    }
+    return currMaxIdx;
+}
+
+float DSP_FFT_computeDeltaPhi(q31_t* pDataA, q31_t* pDataB, uint16_t idx) {
+    float reA = (float) pDataA[idx * 2];
+    float imA = (float) pDataA[idx * 2 + 1];
+    float reB = (float) pDataB[idx * 2];
+    float imB = (float) pDataB[idx * 2 + 1];
+    return fmodf(atan2f(reA, imA) - atan2f(reB, imB), M_PI);
+}
+
+float DSP_FFT_findPeakLocation(float* pData, uint16_t idx) {
+    float alpha = pData[idx - 1];
+    float beta = pData[idx];
+    float gamma = pData[idx + 1];
+    float p = (alpha - gamma) * (2 * alpha - 4 * beta + 2 * gamma);
+    return p + idx;
 }
