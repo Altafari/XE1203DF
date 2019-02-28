@@ -1,8 +1,8 @@
 #ifndef __FOURIER_ANALYSIS_H
 #define __FOURIER_ANALYSIS_H
 
-#include<inttypes.h>
-#include "arm_math.h"
+#include <inttypes.h>
+#include <arm_math.h>
 
 #ifdef __cplusplus
  extern "C" {

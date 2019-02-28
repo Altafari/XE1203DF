@@ -1,7 +1,7 @@
 #include <stm32f446xx.h>
+#include <arm_math.h>
 #include "downsampling.h"
 #include "fourier_analysis.h"
-#include "arm_math.h"
 #include "stm32f4xx_hal.h"
 
 #define FIR_STAGE1_N_TAPS 32

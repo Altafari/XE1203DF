@@ -45,6 +45,7 @@
 #include "xe1203_driver.h"
 #include "downsampling.h"
 #include "fourier_analysis.h"
+#include "post_processing.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -59,6 +60,7 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_usart2_tx;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
@@ -132,6 +134,7 @@ int main(void)
   XE1203_WriteDataStruct(XE1203_Config.buffer);
   DSP_FIR_init();
   DSP_FFT_init();
+  DSP_PP_init(&huart2);
 
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*) adc1_buffer, ADC_BUFF_LEN);
   HAL_ADC_Start_DMA(&hadc2, (uint32_t*) adc2_buffer, ADC_BUFF_LEN);
@@ -413,7 +416,7 @@ static void MX_USART2_UART_Init(void)
 {
 
   huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
+  huart2.Init.BaudRate = 9600;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
@@ -434,8 +437,12 @@ static void MX_DMA_Init(void)
 {
   /* DMA controller clock enable */
   __HAL_RCC_DMA2_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Stream6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
@@ -530,7 +537,7 @@ static void XE1203_Configure()
     XE1203_Config.FSParam0 = 0;
     XE1203_Config.FSParam1 = 0;
     XE1203_Config.FSParam2 = 0;
-    XE1203_Config.SWParam0 = 0x80; // Rx mode A
+    XE1203_Config.SWParam0 = 0x88; // Rx mode B
     XE1203_Config.SWParam1 = 0x06; // Freq lo
     XE1203_Config.SWParam2 = 0x02; // Freq Hi
     XE1203_Config.SWParam3 = 0;

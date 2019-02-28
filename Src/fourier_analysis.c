@@ -1,9 +1,9 @@
 #include <stm32f446xx.h>
 #include <math.h>
+#include <arm_const_structs.h>
 #include "downsampling.h"
 #include "fourier_analysis.h"
-#include "arm_const_structs.h"
-#include "stm32f4xx_hal.h"
+#include "post_processing.h"
 
 #define FFT_SIZE 1024
 #define NUM_FRAMES_TO_PROCESS 50
@@ -97,14 +97,11 @@ void DSP_FFT_processDataFromLoop() {
     uint16_t idxB = DSP_FFT_findMaximumTriplet(fftMagnitudeB, FFT_SIZE / 2 + TRIPLET_DELTA, FFT_SIZE - TRIPLET_DELTA * 3);
     float peakA = DSP_FFT_findPeakLocation(fftMagnitudeA, idxA);
     float peakB = DSP_FFT_findPeakLocation(fftMagnitudeB, idxB);
+    arm_add_f32(fftMagnitudeA, fftMagnitudeB, fftMagnitudeA, FFT_SIZE);
+    uint16_t idx = DSP_FFT_findMaximumTriplet(fftMagnitudeA, FFT_SIZE / 2 + TRIPLET_DELTA, FFT_SIZE - TRIPLET_DELTA * 3);
     volatile float peakDelta = peakA - peakB;
-    if (fabs(peakDelta) > 3) return;
-    if (idxA != 55555) {
-        float dPhi = DSP_FFT_computeDeltaPhi(fftBufferA, fftBufferB, idxA);
-        if (dPhi < 555.0) {
-            bufferReady = 0;
-        }
-    }
+    float dPhi = DSP_FFT_computeDeltaPhi(fftBufferA, fftBufferB, idx);
+    DSP_PP_updateFilterState(dPhi, fftMagnitudeA[idx] / 2, peakDelta);
 }
 
 void DSP_FFT_applyZeroPaddingAndWindowComplexQ15(q15_t* pData, q15_t* pBuffer) {

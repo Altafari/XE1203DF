@@ -82,7 +82,8 @@
 								<option id="gnu.c.link.option.paths.2014070537" name="Library search path (-L)" superClass="gnu.c.link.option.paths" useByScannerDiscovery="false" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${CMSIS_LOC}/Lib/GCC&quot;" />
 								</option>
-								<option id="gnu.c.link.option.ldflags.1847936962" name="Linker flags" superClass="gnu.c.link.option.ldflags" useByScannerDiscovery="false" value="-specs=nosys.specs -specs=nano.specs" valueType="string" />
+								<option id="gnu.c.link.option.ldflags.1847936962" name="Linker flags" superClass="gnu.c.link.option.ldflags" useByScannerDiscovery="false" value="-specs=nosys.specs -specs=nano.specs -u _printf_float" valueType="string" />
+								<option id="gnu.c.link.option.other.615650634" name="Other options (-Xlinker [option])" superClass="gnu.c.link.option.other" useByScannerDiscovery="false" valueType="stringList" />
 								<inputType id="cdt.managedbuild.tool.gnu.c.linker.input.1036832519" superClass="cdt.managedbuild.tool.gnu.c.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)" />
 									<additionalInput kind="additionalinput" paths="$(LIBS)" />
@@ -197,6 +198,9 @@
 									<listOptionValue builtIn="false" value="&quot;${CMSIS_LOC}/Lib/GCC&quot;" />
 								</option>
 								<option id="gnu.c.link.option.ldflags.1847936962" name="Linker flags" superClass="gnu.c.link.option.ldflags" value="-specs=nosys.specs -specs=nano.specs" valueType="string" />
+								<option id="gnu.c.link.option.other.863445727" name="Other options (-Xlinker [option])" superClass="gnu.c.link.option.other" valueType="stringList">
+									<listOptionValue builtIn="false" value="-u _printf_float" />
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.linker.input.1036832519" superClass="cdt.managedbuild.tool.gnu.c.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)" />
 									<additionalInput kind="additionalinput" paths="$(LIBS)" />
