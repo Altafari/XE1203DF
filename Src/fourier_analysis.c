@@ -26,6 +26,7 @@ static q15_t fftBufferB[FFT_SIZE * 2];
 static void DSP_FFT_fillBlackmanWindowQ15(q15_t* pBuffer, uint16_t size);
 static void DSP_FFT_fillBlackmanWindowComplexQ15(q15_t* pBuffer, uint16_t size);
 static q15_t DSP_FFT_computeBlackmanWindow(uint16_t n, uint16_t size);
+static void DSP_FFT_applyZeroPaddingAndWindowComplexQ15(q15_t* pData, q15_t* pBuffer);
 
 void DSP_FFT_init() {
     frameCtr = 0;
@@ -53,6 +54,7 @@ void DSP_FFT_receiveData(q15_t* pDataRe, q15_t* pDataIm) {
         *pBuffer++ = *pDataRe++;
         *pBuffer++ = *pDataIm++;
     }
+
     pBufferOther += FIR_OUTPUT_BLOCK_SIZE * 2;
     q15_t* tmp = pBuffer;
     pBuffer = pBufferOther;
@@ -72,14 +74,16 @@ void DSP_FFT_processDataFromLoop() {
     if (!bufferReady) return;
     bufferReady = 0;
     uint8_t bufferIdxToUse = bufferIdx ^ 1;
-    arm_mult_q15(&storageBufferA[bufferIdxToUse][0], fft_window, &fftBufferA[FFT_SIZE-FFT_WINDOW_SIZE], FFT_WINDOW_SIZE);
-    arm_mult_q15(&storageBufferA[bufferIdxToUse][FFT_WINDOW_SIZE], &fft_window[FFT_WINDOW_SIZE], fftBufferA, FFT_WINDOW_SIZE);
-    arm_fill_q15(0, &fftBufferA[FFT_WINDOW_SIZE], FFT_SIZE * 2 - FFT_WINDOW_SIZE * 2);
-    arm_mult_q15(&storageBufferB[bufferIdxToUse][0], fft_window, &fftBufferB[FFT_SIZE-FFT_WINDOW_SIZE], FFT_WINDOW_SIZE);
-    arm_mult_q15(&storageBufferB[bufferIdxToUse][FFT_WINDOW_SIZE], &fft_window[FFT_WINDOW_SIZE], fftBufferB, FFT_WINDOW_SIZE);
-    arm_fill_q15(0, &fftBufferB[FFT_WINDOW_SIZE], FFT_SIZE * 2 - FFT_WINDOW_SIZE * 2);
+    DSP_FFT_applyZeroPaddingAndWindowComplexQ15(storageBufferA[bufferIdxToUse], fftBufferA);
+    DSP_FFT_applyZeroPaddingAndWindowComplexQ15(storageBufferB[bufferIdxToUse], fftBufferB);
     arm_cfft_q15(&arm_cfft_sR_q15_len1024, fftBufferA, 0, 1);
     arm_cfft_q15(&arm_cfft_sR_q15_len1024, fftBufferB, 0, 1);
+}
+
+void DSP_FFT_applyZeroPaddingAndWindowComplexQ15(q15_t* pData, q15_t* pBuffer) {
+    arm_mult_q15(pData, fft_window, &pBuffer[FFT_SIZE * 2 - FFT_WINDOW_SIZE], FFT_WINDOW_SIZE);
+    arm_mult_q15(&pData[FFT_WINDOW_SIZE], &fft_window[FFT_WINDOW_SIZE], pBuffer, FFT_WINDOW_SIZE);
+    arm_fill_q15(0, &pBuffer[FFT_WINDOW_SIZE], FFT_SIZE * 2 - FFT_WINDOW_SIZE * 2);
 }
 
 void DSP_FFT_fillBlackmanWindowQ15(q15_t* pBuffer, uint16_t size) {
@@ -89,7 +93,7 @@ void DSP_FFT_fillBlackmanWindowQ15(q15_t* pBuffer, uint16_t size) {
 }
 
 void DSP_FFT_fillBlackmanWindowComplexQ15(q15_t* pBuffer, uint16_t size) {
-    for (uint16_t i = 0; i < size * 2; i++) {
+    for (uint16_t i = 0; i < size; i++) {
         q15_t value = DSP_FFT_computeBlackmanWindow(i, size - 1);
         *pBuffer++ = value;
         *pBuffer++ = value;
@@ -97,6 +101,6 @@ void DSP_FFT_fillBlackmanWindowComplexQ15(q15_t* pBuffer, uint16_t size) {
 }
 
 q15_t DSP_FFT_computeBlackmanWindow(uint16_t n, uint16_t size) {
-    float angle = (M_PI_2 * n) / size;
-    return 32767 * round(0.45f - 0.5f * cos(angle) + 0.08f * cos(angle * 2));
+    float angle = (2 * M_PI * n) / size;
+    return round(32767 * (0.42f - 0.5f * cos(angle) + 0.08f * cos(angle * 2)));
 }
