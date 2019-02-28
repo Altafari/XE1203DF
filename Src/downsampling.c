@@ -9,6 +9,7 @@
 #define FIR_STAGE2_BLOCK_SIZE 64
 #define FIR_STAGE1_M 4
 #define FIR_STAGE2_M 8
+#define DC_LEVEL 1670
 
 static arm_fir_decimate_instance_q15 fir_stage1_i;
 static arm_fir_decimate_instance_q15 fir_stage1_q;
@@ -59,13 +60,13 @@ void DSP_FIR_processBuffer(uint16_t* pBuff_i, uint16_t* pBuff_q) {
 
 static void convert12bitU_to_q15(uint16_t* pIn, q15_t* pOut, uint16_t nSamples) {
     for (uint16_t i = 0; i < nSamples; i += 8) {
-        *pOut++ = (*pIn++) - 2048;
-        *pOut++ = (*pIn++) - 2048;
-        *pOut++ = (*pIn++) - 2048;
-        *pOut++ = (*pIn++) - 2048;
-        *pOut++ = (*pIn++) - 2048;
-        *pOut++ = (*pIn++) - 2048;
-        *pOut++ = (*pIn++) - 2048;
-        *pOut++ = (*pIn++) - 2048;
+        *pOut++ = (*pIn++) - DC_LEVEL;
+        *pOut++ = (*pIn++) - DC_LEVEL;
+        *pOut++ = (*pIn++) - DC_LEVEL;
+        *pOut++ = (*pIn++) - DC_LEVEL;
+        *pOut++ = (*pIn++) - DC_LEVEL;
+        *pOut++ = (*pIn++) - DC_LEVEL;
+        *pOut++ = (*pIn++) - DC_LEVEL;
+        *pOut++ = (*pIn++) - DC_LEVEL;
     }
 }
