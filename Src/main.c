@@ -531,7 +531,7 @@ static void XE1203_Configure()
     XE1203_Config.FSParam1 = 0;
     XE1203_Config.FSParam2 = 0;
     XE1203_Config.SWParam0 = 0x80; // Rx mode A
-    XE1203_Config.SWParam1 = 0x0A; // Freq lo
+    XE1203_Config.SWParam1 = 0x06; // Freq lo
     XE1203_Config.SWParam2 = 0x02; // Freq Hi
     XE1203_Config.SWParam3 = 0;
     XE1203_Config.SWParam4 = 0;

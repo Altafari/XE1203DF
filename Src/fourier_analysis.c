@@ -20,13 +20,15 @@ static q15_t storageBufferA[2][FFT_WINDOW_SIZE * 2];
 static q15_t storageBufferB[2][FFT_WINDOW_SIZE * 2];
 
 static uint8_t bufferReady;
-static q15_t fftBufferA[FFT_SIZE * 2];
-static q15_t fftBufferB[FFT_SIZE * 2];
+static q15_t fftBuffer[FFT_SIZE * 2];
+static q31_t fftBufferA[FFT_SIZE * 2];
+static q31_t fftBufferB[FFT_SIZE * 2];
 
 static void DSP_FFT_fillBlackmanWindowQ15(q15_t* pBuffer, uint16_t size);
 static void DSP_FFT_fillBlackmanWindowComplexQ15(q15_t* pBuffer, uint16_t size);
 static q15_t DSP_FFT_computeBlackmanWindow(uint16_t n, uint16_t size);
 static void DSP_FFT_applyZeroPaddingAndWindowComplexQ15(q15_t* pData, q15_t* pBuffer);
+static void DSP_FFT_convertQ15BufferToQ31(q15_t* pQ15, q31_t* pQ31);
 
 void DSP_FFT_init() {
     frameCtr = 0;
@@ -74,10 +76,12 @@ void DSP_FFT_processDataFromLoop() {
     if (!bufferReady) return;
     bufferReady = 0;
     uint8_t bufferIdxToUse = bufferIdx ^ 1;
-    DSP_FFT_applyZeroPaddingAndWindowComplexQ15(storageBufferA[bufferIdxToUse], fftBufferA);
-    DSP_FFT_applyZeroPaddingAndWindowComplexQ15(storageBufferB[bufferIdxToUse], fftBufferB);
-    arm_cfft_q15(&arm_cfft_sR_q15_len1024, fftBufferA, 0, 1);
-    arm_cfft_q15(&arm_cfft_sR_q15_len1024, fftBufferB, 0, 1);
+    DSP_FFT_applyZeroPaddingAndWindowComplexQ15(storageBufferA[bufferIdxToUse], fftBuffer);
+    DSP_FFT_convertQ15BufferToQ31(fftBuffer, fftBufferA);
+    DSP_FFT_applyZeroPaddingAndWindowComplexQ15(storageBufferB[bufferIdxToUse], fftBuffer);
+    DSP_FFT_convertQ15BufferToQ31(fftBuffer, fftBufferB);
+    arm_cfft_q31(&arm_cfft_sR_q31_len1024, fftBufferA, 0, 1);
+    arm_cfft_q31(&arm_cfft_sR_q31_len1024, fftBufferB, 0, 1);
 }
 
 void DSP_FFT_applyZeroPaddingAndWindowComplexQ15(q15_t* pData, q15_t* pBuffer) {
@@ -103,4 +107,13 @@ void DSP_FFT_fillBlackmanWindowComplexQ15(q15_t* pBuffer, uint16_t size) {
 q15_t DSP_FFT_computeBlackmanWindow(uint16_t n, uint16_t size) {
     float angle = (2 * M_PI * n) / size;
     return round(32767 * (0.42f - 0.5f * cos(angle) + 0.08f * cos(angle * 2)));
+}
+
+void DSP_FFT_convertQ15BufferToQ31(q15_t* pQ15, q31_t* pQ31) {
+    for (uint16_t i = 0; i < FFT_SIZE * 2; i += 4) {
+        *pQ31++ = (*pQ15++) << 16;
+        *pQ31++ = (*pQ15++) << 16;
+        *pQ31++ = (*pQ15++) << 16;
+        *pQ31++ = (*pQ15++) << 16;
+    }
 }
