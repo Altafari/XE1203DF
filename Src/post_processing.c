@@ -34,7 +34,7 @@ void DSP_PP_updateFilterState(float deltaPhi, float sigMagnitude, float deltaPea
         signalMagnitudeState = (1 - UPD_RATE) * signalMagnitudeState + UPD_RATE * sigMagnitude;
         deltaPeakState = (1 - UPD_RATE) * deltaPeakState + UPD_RATE * deltaPeak * deltaPeak;
     } else {
-        validityState = (1 - UPD_RATE);
+        validityState = (1 - UPD_RATE) * validityState;
     }
 
     if (validityState > 0.5f) {

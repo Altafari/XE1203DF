@@ -10,6 +10,9 @@
 #define FFT_WINDOW_SIZE (FIR_OUTPUT_BLOCK_SIZE * NUM_FRAMES_TO_PROCESS)
 #define DB_NORM 150.0f
 #define TRIPLET_DELTA (FFT_SIZE / (FIR_OUTPUT_BLOCK_SIZE * 2))
+#define DC_CORR_UPDATE 1.0E-2f
+#define MIN_IDX 750
+#define MAX_IDX 850
 
 static q15_t switch_window[FIR_OUTPUT_BLOCK_SIZE];
 static q15_t fft_window[FFT_WINDOW_SIZE * 2];
@@ -29,6 +32,11 @@ static q31_t fftBufferB[FFT_SIZE * 2];
 static float fftMagnitudeA[FFT_SIZE];
 static float fftMagnitudeB[FFT_SIZE];
 
+static float dcCorrRe;
+static float dcCorrIm;
+static q15_t dcCorrReQ15;
+static q15_t dcCorrImQ15;
+
 static void DSP_FFT_fillBlackmanWindowQ15(q15_t* pBuffer, uint16_t size);
 static void DSP_FFT_fillBlackmanWindowComplexQ15(q15_t* pBuffer, uint16_t size);
 static q15_t DSP_FFT_computeBlackmanWindow(uint16_t n, uint16_t size);
@@ -38,6 +46,7 @@ static void DSP_FFT_computeMagnitude(q31_t* pData, float* pBuffer);
 static uint16_t DSP_FFT_findMaximumTriplet(float* pData, uint16_t start, uint16_t end);
 static float DSP_FFT_computeDeltaPhi(q31_t* pDataA, q31_t* pDataB, uint16_t idx);
 static float DSP_FFT_findPeakLocation(float* pData, uint16_t idx);
+static void DSP_FFT_updateDcCorrection(q15_t* pData, float* pState, q15_t corr);
 
 void DSP_FFT_init() {
     frameCtr = 0;
@@ -46,11 +55,17 @@ void DSP_FFT_init() {
     bufferReady = 0;
     DSP_FFT_fillBlackmanWindowQ15(switch_window, FIR_OUTPUT_BLOCK_SIZE);
     DSP_FFT_fillBlackmanWindowComplexQ15(fft_window, FFT_WINDOW_SIZE);
+    dcCorrRe = 0.0f;
+    dcCorrIm = 0.0f;
+    dcCorrReQ15 = 0;
+    dcCorrImQ15 = 0;
 }
 
 void DSP_FFT_receiveData(q15_t* pDataRe, q15_t* pDataIm) {
     q15_t buff_i[FIR_OUTPUT_BLOCK_SIZE];
     q15_t buff_q[FIR_OUTPUT_BLOCK_SIZE];
+    DSP_FFT_updateDcCorrection(pDataRe, &dcCorrRe, dcCorrReQ15);
+    DSP_FFT_updateDcCorrection(pDataIm, &dcCorrIm, dcCorrImQ15);
     arm_mult_q15(pDataRe, switch_window, buff_i, FIR_OUTPUT_BLOCK_SIZE);
     arm_mult_q15(pDataIm, switch_window, buff_q, FIR_OUTPUT_BLOCK_SIZE);
     pDataRe = buff_i;
@@ -77,6 +92,8 @@ void DSP_FFT_receiveData(q15_t* pDataRe, q15_t* pDataIm) {
         bufferIdx &= 1;
         pBuffer = &storageBufferA[bufferIdx][0];
         pBufferOther = &storageBufferB[bufferIdx][0];
+        dcCorrReQ15 = roundf(dcCorrRe);
+        dcCorrImQ15 = roundf(dcCorrIm);
         bufferReady = 1;
     }
 }
@@ -93,12 +110,12 @@ void DSP_FFT_processDataFromLoop() {
     arm_cfft_q31(&arm_cfft_sR_q31_len1024, fftBufferB, 0, 1);
     DSP_FFT_computeMagnitude(fftBufferA, fftMagnitudeA);
     DSP_FFT_computeMagnitude(fftBufferB, fftMagnitudeB);
-    uint16_t idxA = DSP_FFT_findMaximumTriplet(fftMagnitudeA, FFT_SIZE / 2 + TRIPLET_DELTA, FFT_SIZE - TRIPLET_DELTA * 3);
-    uint16_t idxB = DSP_FFT_findMaximumTriplet(fftMagnitudeB, FFT_SIZE / 2 + TRIPLET_DELTA, FFT_SIZE - TRIPLET_DELTA * 3);
+    uint16_t idxA = DSP_FFT_findMaximumTriplet(fftMagnitudeA, MIN_IDX, MAX_IDX);
+    uint16_t idxB = DSP_FFT_findMaximumTriplet(fftMagnitudeB, MIN_IDX, MAX_IDX);
     float peakA = DSP_FFT_findPeakLocation(fftMagnitudeA, idxA);
     float peakB = DSP_FFT_findPeakLocation(fftMagnitudeB, idxB);
     arm_add_f32(fftMagnitudeA, fftMagnitudeB, fftMagnitudeA, FFT_SIZE);
-    uint16_t idx = DSP_FFT_findMaximumTriplet(fftMagnitudeA, FFT_SIZE / 2 + TRIPLET_DELTA, FFT_SIZE - TRIPLET_DELTA * 3);
+    uint16_t idx = DSP_FFT_findMaximumTriplet(fftMagnitudeA, MIN_IDX, MAX_IDX);
     volatile float peakDelta = peakA - peakB;
     float dPhi = DSP_FFT_computeDeltaPhi(fftBufferA, fftBufferB, idx);
     DSP_PP_updateFilterState(dPhi, fftMagnitudeA[idx] / 2, peakDelta);
@@ -137,6 +154,16 @@ void DSP_FFT_convertQ15BufferToQ31(q15_t* pQ15, q31_t* pQ31) {
         *pQ31++ = (*pQ15++) << 16;
     }
 }
+
+static void DSP_FFT_updateDcCorrection(q15_t* pData, float* pState, q15_t corr) {
+    q31_t sum = 0;
+    for (uint16_t i = 0; i < FIR_OUTPUT_BLOCK_SIZE; i++) {
+        sum += pData[i];
+        pData[i] -= corr;
+    }
+   *pState = (*pState) * (1 - DC_CORR_UPDATE) + sum * (DC_CORR_UPDATE / FIR_OUTPUT_BLOCK_SIZE);
+}
+
 
 void DSP_FFT_computeMagnitude(q31_t* pData, float* pBuffer) {
     for (uint16_t i = 0; i < FFT_SIZE * 2; i += 2) {
