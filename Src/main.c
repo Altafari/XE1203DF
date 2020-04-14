@@ -10,7 +10,7 @@
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
-  * COPYRIGHT(c) 2019 STMicroelectronics
+  * COPYRIGHT(c) 2020 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -537,8 +537,8 @@ static void XE1203_Configure()
     XE1203_Config.FSParam0 = 0;
     XE1203_Config.FSParam1 = 0;
     XE1203_Config.FSParam2 = 0;
-    XE1203_Config.SWParam0 = 0x80; // Rx mode A
-    XE1203_Config.SWParam1 = 0x06; // Freq lo
+    XE1203_Config.SWParam0 = 0x88; // Rx mode A - 0x80 B - 0x88
+    XE1203_Config.SWParam1 = 0x0B; // Freq lo
     XE1203_Config.SWParam2 = 0x02; // Freq Hi
     XE1203_Config.SWParam3 = 0;
     XE1203_Config.SWParam4 = 0;

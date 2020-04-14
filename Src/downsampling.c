@@ -47,15 +47,15 @@ void DSP_FIR_init() {
 }
 
 void DSP_FIR_processBuffer(uint16_t* pBuff_i, uint16_t* pBuff_q) {
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);
+//    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);
     convert12bitU_to_q15(pBuff_i, fir_stage1_input, FIR_STAGE1_BLOCK_SIZE);
     arm_fir_decimate_fast_q15(&fir_stage1_i, fir_stage1_input, fir_stage2_input, FIR_STAGE1_BLOCK_SIZE);
     arm_fir_decimate_fast_q15(&fir_stage2_i, fir_stage2_input, output_buffer_i, FIR_STAGE2_BLOCK_SIZE);
     convert12bitU_to_q15(pBuff_q, fir_stage1_input, FIR_STAGE1_BLOCK_SIZE);
     arm_fir_decimate_fast_q15(&fir_stage1_q, fir_stage1_input, fir_stage2_input, FIR_STAGE1_BLOCK_SIZE);
     arm_fir_decimate_fast_q15(&fir_stage2_q, fir_stage2_input, output_buffer_q, FIR_STAGE2_BLOCK_SIZE);
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
     DSP_FFT_receiveData(output_buffer_i, output_buffer_q);
+//    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
 }
 
 static void convert12bitU_to_q15(uint16_t* pIn, q15_t* pOut, uint16_t nSamples) {
