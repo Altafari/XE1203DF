@@ -12,10 +12,10 @@
 #define DB_NORM 156.0f
 #define TRIPLET_DELTA (FFT_SIZE / (FIR_OUTPUT_BLOCK_SIZE * 2))
 #define SEARCH_RANGE (TRIPLET_DELTA / 2)
-#define MIN_IDX 200
-#define MAX_IDX 900
-#define FFT_SCALING (-6)
-#define PRODUCT_RSHIFT 5
+#define MIN_IDX 400
+#define MAX_IDX 850
+#define FFT_SCALING (-5)
+#define PRODUCT_RSHIFT 8
 #define PT_RATE 8
 
 static q15_t switch_window[FIR_OUTPUT_BLOCK_SIZE];
@@ -121,7 +121,7 @@ void DSP_FFT_processDataFromLoop() {
         float peak = DSP_FFT_findPeakLocation(fftMagnitude, idx);
         q31_t angle_re = fftDiffAngle[idx * 2];
         q31_t angle_im = fftDiffAngle[idx * 2 + 1];
-        float magnitude = fftMagnitude[idx];
+        float magnitude = fftMagnitude[idx] / 2;
         DSP_PP_updateFilterState(angle_re, angle_im, magnitude, peak);
     }
     else {
