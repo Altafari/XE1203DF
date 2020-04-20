@@ -2,7 +2,7 @@
 #include "dac_scope.h"
 
 //#define NUM_PERIODS 5.0f
-#define BUFF_LEN 1024
+#define BUFF_LEN 2048
 #define CURRENT_LO 1
 #define UPDATED_LO 2
 #define UPDATED_HI 3
@@ -158,11 +158,11 @@ void DACScope_init(DAC_HandleTypeDef* hdac, DMA_HandleTypeDef* h_dma_mem) {
 
 void DACScope_startDisplay(uint32_t *pData, uint32_t length) {
     if (flags & CURRENT_LO) {
-        HAL_DMA_Start(h_memtomem_dma, pData, &dac_buffer[BUFF_LEN], length);
+        HAL_DMA_Start_IT(h_memtomem_dma, (uint32_t)pData, (uint32_t)&dac_buffer[BUFF_LEN], length);
         flags |= UPDATED_HI;
         flags &= ~UPDATED_LO;
     } else {
-        HAL_DMA_Start(h_memtomem_dma, pData, &dac_buffer[0], length);
+        HAL_DMA_Start_IT(h_memtomem_dma, (uint32_t)pData, (uint32_t)&dac_buffer[0], length);
         flags |= UPDATED_LO;
         flags &= ~UPDATED_HI;
     }
@@ -172,16 +172,18 @@ void HAL_DAC_ConvCpltCallbackCh1(DAC_HandleTypeDef* hdac) {
     HAL_GPIO_WritePin(GPIOA, Scope_sync_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(GPIOA, Scope_sync_Pin, GPIO_PIN_RESET);
     flags &= ~CURRENT_LO;
-    if (flags & UPDATED_LO) {
-        HAL_DMA_Start(h_memtomem_dma, &dac_buffer[0], &dac_buffer[BUFF_LEN], BUFF_LEN);
-    }
+ /*   if (flags & UPDATED_LO) {
+        HAL_DMA_Start_IT(h_memtomem_dma, (uint32_t)&dac_buffer[0], (uint32_t)&dac_buffer[BUFF_LEN], BUFF_LEN);
+        flags &= ~UPDATED_LO;
+    }*/
 }
 
 void HAL_DAC_ConvHalfCpltCallbackCh1(DAC_HandleTypeDef* hdac) {
     HAL_GPIO_WritePin(GPIOA, Scope_sync_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(GPIOA, Scope_sync_Pin, GPIO_PIN_RESET);
     flags |= CURRENT_LO;
-    if (flags & UPDATED_HI) {
-        HAL_DMA_Start(h_memtomem_dma, &dac_buffer[BUFF_LEN], &dac_buffer[0], BUFF_LEN);
-    }
+/*    if (flags & UPDATED_HI) {
+        HAL_DMA_Start_IT(h_memtomem_dma, (uint32_t)&dac_buffer[BUFF_LEN], (uint32_t)&dac_buffer[0], BUFF_LEN);
+        flags &= ~UPDATED_HI;
+    }*/
 }
