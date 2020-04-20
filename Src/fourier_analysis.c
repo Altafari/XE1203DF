@@ -5,7 +5,6 @@
 #include "fourier_analysis.h"
 #include "post_processing.h"
 #include "stm32f4xx_hal.h"
-#include "dac_scope.h"
 
 #define FFT_SIZE 1024
 #define NUM_FRAMES_TO_PROCESS 50
@@ -39,8 +38,6 @@ static q31_t fftBufferB[FFT_SIZE * 2];
 
 static float fftMagnitude[FFT_SIZE];
 static q31_t fftDiffAngle[FFT_SIZE * 2];
-
-static uint16_t scope_buffer[FFT_SIZE * 2];
 
 static void DSP_FFT_fillBlackmanWindowQ15(q15_t* pBuffer, uint16_t size);
 static void DSP_FFT_fillBlackmanWindowComplexQ15(q15_t* pBuffer, uint16_t size);
@@ -120,14 +117,6 @@ void DSP_FFT_processDataFromLoop() {
         arm_cfft_q31(&arm_cfft_sR_q31_len1024, fftBufferB, 0, 1);
         DSP_FFT_computeDeltaPhi(fftBufferA, fftBufferB, fftDiffAngle, FFT_SIZE);
         DSP_FFT_computeMagnitude(fftDiffAngle, fftMagnitude, FFT_SIZE);
-
-        for (uint32_t i = 0; i < FFT_SIZE; i++) {
-            scope_buffer[i * 2] = (uint16_t) roundf(fftMagnitude[i] * 300.0f + 50000.0f);
-            scope_buffer[i * 2 + 1] = 0;
-        }
-
-        DACScope_startDisplay((uint32_t*) scope_buffer, FFT_SIZE);
-
         uint16_t idx = DSP_FFT_findMaximum(fftMagnitude, refIdx - SEARCH_RANGE, refIdx + SEARCH_RANGE);
         float peak = DSP_FFT_findPeakLocation(fftMagnitude, idx);
         q31_t angle_re = fftDiffAngle[idx * 2];

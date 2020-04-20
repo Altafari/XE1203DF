@@ -643,6 +643,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
     if (run_dsp_bit_barrier == 3) {
         DSP_FIR_processBuffer(&adc1_buffer[ADC_BUFF_LEN / 2], &adc2_buffer[ADC_BUFF_LEN / 2]);
         run_dsp_bit_barrier = 0;
+        DACScope_startDisplay((uint32_t*) adc1_buffer, 256);
     }
 }
 
