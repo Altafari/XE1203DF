@@ -1,17 +1,22 @@
 #include <math.h>
 #include "dac_scope.h"
 
-#define NUM_PERIODS 5.0f
+//#define NUM_PERIODS 5.0f
 #define BUFF_LEN 1024
+#define CURRENT_LO 1
+#define UPDATED_LO 2
+#define UPDATED_HI 3
 
 /* Private function prototypes -----------------------------------------------*/
 static void DAC_DMAConvCpltDual(DMA_HandleTypeDef *hdma);
 static void DAC_DMAErrorDual(DMA_HandleTypeDef *hdma);
 static void DAC_DMAHalfConvCpltDual(DMA_HandleTypeDef *hdma);
-static void fillBuffer();
+//static void fillBuffer();
 
 static DAC_HandleTypeDef* h_dac;
-static uint32_t buffer[BUFF_LEN];
+static DMA_HandleTypeDef* h_memtomem_dma;
+static uint32_t dac_buffer[BUFF_LEN * 2];
+static volatile uint32_t flags;
 
 /**
   * @brief  Enables DAC and starts conversion of channel.
@@ -133,26 +138,50 @@ static void DAC_DMAErrorDual(DMA_HandleTypeDef *hdma)
   hdac->State= HAL_DAC_STATE_READY;
 }
 
+/*
 static void fillBuffer() {
-    for(uint32_t i = 0; i < BUFF_LEN; i++) {
+    for(uint32_t i = 0; i < BUFF_LEN * 2; i++) {
         uint32_t ch_i = (uint32_t) roundf(cosf(NUM_PERIODS * 2 * M_PI * (float)i / BUFF_LEN) * 0x7FFF + 0x8000);
         uint32_t ch_q = (uint32_t) roundf(sinf(NUM_PERIODS * 2 * M_PI * (float)i / BUFF_LEN) * 0x7FFF + 0x8000);
-        buffer[i] = ch_i | (ch_q << 16);
+        dac_buffer[i] = ch_i | (ch_q << 16);
     }
 }
+*/
 
-void DACScope_init(DAC_HandleTypeDef* hdac) {
+void DACScope_init(DAC_HandleTypeDef* hdac, DMA_HandleTypeDef* h_dma_mem) {
     h_dac = hdac;
-    fillBuffer();
-    DACScope_startDisplay(buffer, BUFF_LEN);
+    h_memtomem_dma = h_dma_mem;
+    flags = 0;
+    for (uint32_t i = 0; i < BUFF_LEN * 2; i++) dac_buffer[i] = 0;
+    HAL_DAC_Start_DMA_Dual(h_dac, dac_buffer, BUFF_LEN * 2, DAC_ALIGN_12B_L);
 }
 
 void DACScope_startDisplay(uint32_t *pData, uint32_t length) {
-    HAL_DAC_Start_DMA_Dual(h_dac, pData, length, DAC_ALIGN_12B_L);
+    if (flags & CURRENT_LO) {
+        HAL_DMA_Start(h_memtomem_dma, pData, &dac_buffer[BUFF_LEN], length);
+        flags |= UPDATED_HI;
+        flags &= ~UPDATED_LO;
+    } else {
+        HAL_DMA_Start(h_memtomem_dma, pData, &dac_buffer[0], length);
+        flags |= UPDATED_LO;
+        flags &= ~UPDATED_HI;
+    }
 }
-
 
 void HAL_DAC_ConvCpltCallbackCh1(DAC_HandleTypeDef* hdac) {
     HAL_GPIO_WritePin(GPIOA, Scope_sync_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(GPIOA, Scope_sync_Pin, GPIO_PIN_RESET);
+    flags &= ~CURRENT_LO;
+    if (flags & UPDATED_LO) {
+        HAL_DMA_Start(h_memtomem_dma, &dac_buffer[0], &dac_buffer[BUFF_LEN], BUFF_LEN);
+    }
+}
+
+void HAL_DAC_ConvHalfCpltCallbackCh1(DAC_HandleTypeDef* hdac) {
+    HAL_GPIO_WritePin(GPIOA, Scope_sync_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOA, Scope_sync_Pin, GPIO_PIN_RESET);
+    flags |= CURRENT_LO;
+    if (flags & UPDATED_HI) {
+        HAL_DMA_Start(h_memtomem_dma, &dac_buffer[BUFF_LEN], &dac_buffer[0], BUFF_LEN);
+    }
 }

@@ -67,6 +67,8 @@ TIM_HandleTypeDef htim3;
 UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_tx;
 
+DMA_HandleTypeDef hdma_memtomem_dma2_stream1;
+
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 static uint8_t run_dsp_bit_barrier;
@@ -150,7 +152,7 @@ int main(void)
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
   HAL_TIM_Base_Start(&htim2);
-  DACScope_init(&hdac);
+  DACScope_init(&hdac, &hdma_memtomem_dma2_stream1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -514,12 +516,33 @@ static void MX_USART2_UART_Init(void)
 
 /** 
   * Enable DMA controller clock
+  * Configure DMA for memory to memory transfers
+  *   hdma_memtomem_dma2_stream1
   */
 static void MX_DMA_Init(void) 
 {
   /* DMA controller clock enable */
   __HAL_RCC_DMA1_CLK_ENABLE();
   __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* Configure DMA request hdma_memtomem_dma2_stream1 on DMA2_Stream1 */
+  hdma_memtomem_dma2_stream1.Instance = DMA2_Stream1;
+  hdma_memtomem_dma2_stream1.Init.Channel = DMA_CHANNEL_0;
+  hdma_memtomem_dma2_stream1.Init.Direction = DMA_MEMORY_TO_MEMORY;
+  hdma_memtomem_dma2_stream1.Init.PeriphInc = DMA_PINC_ENABLE;
+  hdma_memtomem_dma2_stream1.Init.MemInc = DMA_MINC_ENABLE;
+  hdma_memtomem_dma2_stream1.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+  hdma_memtomem_dma2_stream1.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+  hdma_memtomem_dma2_stream1.Init.Mode = DMA_NORMAL;
+  hdma_memtomem_dma2_stream1.Init.Priority = DMA_PRIORITY_LOW;
+  hdma_memtomem_dma2_stream1.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
+  hdma_memtomem_dma2_stream1.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
+  hdma_memtomem_dma2_stream1.Init.MemBurst = DMA_MBURST_SINGLE;
+  hdma_memtomem_dma2_stream1.Init.PeriphBurst = DMA_PBURST_SINGLE;
+  if (HAL_DMA_Init(&hdma_memtomem_dma2_stream1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
 
   /* DMA interrupt init */
   /* DMA1_Stream5_IRQn interrupt configuration */
