@@ -643,7 +643,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
     if (run_dsp_bit_barrier == 3) {
         DSP_FIR_processBuffer(&adc1_buffer[ADC_BUFF_LEN / 2], &adc2_buffer[ADC_BUFF_LEN / 2]);
         run_dsp_bit_barrier = 0;
-        DACScope_startDisplay((uint32_t*) adc1_buffer, 256);
     }
 }
 
@@ -657,7 +656,7 @@ static void XE1203_Configure()
     XE1203_Config.FSParam1 = 0;
     XE1203_Config.FSParam2 = 0;
     XE1203_Config.SWParam0 = 0x80; // Rx mode A - 0x80 B - 0x88
-    XE1203_Config.SWParam1 = 0x0B; // Freq lo
+    XE1203_Config.SWParam1 = 0x08; // Freq lo
     XE1203_Config.SWParam2 = 0x02; // Freq Hi
     XE1203_Config.SWParam3 = 0;
     XE1203_Config.SWParam4 = 0;
