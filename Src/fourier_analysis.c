@@ -78,12 +78,12 @@ void DSP_FFT_receiveData(q15_t* pDataRe, q15_t* pDataIm) {
         pBuffer = &storageBuffer[bufferIdx][0];
         bufferReady = 1;
         if (roundCtr == 0) {
-            TIM1->CCR2 = 255;
+            TIM1->CCR1 = 255;
         }
         roundCtr++;
         if (roundCtr >= PT_RATE) {
             roundCtr = 0;
-            TIM1->CCR2 = 0;
+            TIM1->CCR1 = 0;
         }
     }
 }
@@ -105,7 +105,6 @@ void DSP_FFT_processDataFromLoop() {
         DSP_FFT_computeDeltaPhi(fftBufferA, fftBufferB, fftDiffAngle, FFT_SIZE);
         DSP_FFT_computeMagnitude(fftDiffAngle, fftMagnitude, FFT_SIZE);
         uint16_t idx = DSP_FFT_findMaximum(fftMagnitude, refIdx - SEARCH_RANGE, refIdx + SEARCH_RANGE);
-        DSP_FFT_displaySpectrum(fftMagnitude, FFT_SIZE);
         float peak = DSP_FFT_findPeakLocation(fftMagnitude, idx);
         q31_t angle_re = fftDiffAngle[idx * 2];
         q31_t angle_im = fftDiffAngle[idx * 2 + 1];
@@ -114,6 +113,7 @@ void DSP_FFT_processDataFromLoop() {
     }
     else {
         DSP_FFT_computeMagnitude(fftBufferA, fftMagnitude, FFT_SIZE);
+        DSP_FFT_displaySpectrum(fftMagnitude, FFT_SIZE);
         refIdx = DSP_FFT_findMaximum(fftMagnitude, MIN_IDX, MAX_IDX);
     }
     // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
