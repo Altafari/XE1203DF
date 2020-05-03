@@ -11,10 +11,8 @@ void DSP_PP_init(UART_HandleTypeDef* huart) {
     hUart = huart;
 }
 
-void DSP_PP_updateFilterState(q31_t angle_re, q31_t angle_im, float magnitude, float peak) {
-
-    float dPhi = atan2f((float)angle_im, (float)angle_re);
-    sprintf(textBuffer, "dPhi = %3.1f, RSSI = %1.3f, RefIdx=%4.0f\n\r", dPhi * rad2deg, magnitude, peak);
+void DSP_PP_updateFilterState(float a, float b, float c, float peak) {
+    sprintf(textBuffer, "a = %1.3f, b = %1.3f, c = %1.3f\n\r", a, b, c);
 //    sprintf(textBuffer, "dPhi = %3.1f, phAcc = %1.3f, RSSI = %3.1fdB, dPeak = %2.2f\r\n", deltaPhiState * rad2deg, devPhiRms * rad2deg, signalMagnitudeState, devPeakRms);
     uint16_t strLength = strlen(textBuffer);
     hUart->gState = HAL_UART_STATE_READY;

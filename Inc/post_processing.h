@@ -9,7 +9,7 @@
 #endif
 
 void DSP_PP_init();
-void DSP_PP_updateFilterState(q31_t angle_re, q31_t angle_im, float magnitude, float peak);
+void DSP_PP_updateFilterState(float a, float b, float c, float peak);
 
 #ifdef __cplusplus
 }

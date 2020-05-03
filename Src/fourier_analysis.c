@@ -16,38 +16,52 @@
 #define MAX_IDX 850
 #define FFT_SCALING (-5)
 #define PRODUCT_RSHIFT 8
-#define PT_RATE 8
+#define PASSTHROUGH_RATE 8
+
+typedef struct {
+    float re, im;
+} Complex_Float_t;
+
+typedef struct {
+    Complex_Float_t a, b, c;
+} Complex_Float_Triplet_t;
 
 static q15_t switch_window[FIR_OUTPUT_BLOCK_SIZE];
 static q15_t fft_window[FFT_WINDOW_SIZE * 2];
 
-static volatile uint8_t bufferIdx;
-static volatile uint8_t bufferReady;
-static volatile uint16_t roundCtr;
+static volatile uint32_t bufferIdx;
+static volatile uint32_t bufferReady;
+static volatile uint32_t roundCtr;
 
-static uint16_t frameCtr;
+static uint32_t frameCtr;
 static q15_t *pBuffer;
 static q15_t storageBuffer[2][FFT_WINDOW_SIZE * 2];
 
-static uint16_t refIdx;
-static q15_t fftBuffer[FFT_SIZE * 2];
-static q31_t fftBufferA[FFT_SIZE * 2];
-static q31_t fftBufferB[FFT_SIZE * 2];
+static uint32_t refIdx;
+static q15_t inputBuffer[FFT_SIZE * 2];
+static q31_t fftBuffer[FFT_SIZE * 2];
 
 static float fftMagnitude[FFT_SIZE];
-static q31_t fftDiffAngle[FFT_SIZE * 2];
 
 static uint32_t displayBuffer[FFT_SIZE];
 
-static void DSP_FFT_fillBlackmanWindowQ15(q15_t* pBuffer, uint16_t size);
-static void DSP_FFT_fillBlackmanWindowComplexQ15(q15_t* pBuffer, uint16_t size);
-static q15_t DSP_FFT_computeBlackmanWindow(uint16_t n, uint16_t size);
+static void DSP_FFT_fillBlackmanWindowQ15(q15_t* pBuffer, uint32_t size);
+static void DSP_FFT_fillBlackmanWindowComplexQ15(q15_t* pBuffer, uint32_t size);
+static q15_t DSP_FFT_computeBlackmanWindow(uint32_t n, uint32_t size);
 static void DSP_FFT_applyZeroPaddingAndWindowComplexQ15(q15_t* pData, q15_t* pBuffer);
-static void DSP_FFT_computeMagnitude(q31_t* pData, float* pBuffer, uint16_t size);
-static uint16_t DSP_FFT_findMaximum(float* pData, uint16_t start, uint16_t end);
-static void DSP_FFT_computeDeltaPhi(q31_t* pDataA, q31_t* pDataB, q31_t* pResult, uint16_t size);
-static float DSP_FFT_findPeakLocation(float* pData, uint16_t idx);
+
+static void DSP_FFT_computeMagnitude(q31_t* pData, float* pBuffer, uint32_t size);
+
+static uint32_t DSP_FFT_findMaximum(float* pData, uint32_t start, uint32_t end);
+static uint32_t DSP_FFT_findMaximumTriplet(float* pData, uint32_t start, uint32_t end);
+
+static float DSP_FFT_findTripletPeakLocation(float *pData, uint32_t idx);
+
 static void DSP_FFT_displaySpectrum(float *buff, uint32_t size);
+
+static float DSP_FFT_linearInterpolation(float p, float a, float b, float c);
+static Complex_Float_t DSP_FFT_interpolateFloat(float p, q31_t *pComplexData, int idx);
+static Complex_Float_Triplet_t DSP_FFT_interpolateFloatTriplet(float p, q31_t *pComplexData, int idx);
 
 void DSP_FFT_init() {
     frameCtr = 0;
@@ -81,7 +95,7 @@ void DSP_FFT_receiveData(q15_t* pDataRe, q15_t* pDataIm) {
             TIM1->CCR1 = 255;
         }
         roundCtr++;
-        if (roundCtr >= PT_RATE) {
+        if (roundCtr >= PASSTHROUGH_RATE) {
             roundCtr = 0;
             TIM1->CCR1 = 0;
         }
@@ -93,26 +107,18 @@ void DSP_FFT_processDataFromLoop() {
     // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);
     bufferReady = 0;
     uint8_t bufferIdxToUse = bufferIdx ^ 1;
-    DSP_FFT_applyZeroPaddingAndWindowComplexQ15(storageBuffer[bufferIdxToUse], fftBuffer);
-    arm_q15_to_q31(fftBuffer, fftBufferA, FFT_SIZE * 2);
-    arm_shift_q31(fftBufferA, FFT_SCALING,  fftBufferA, FFT_SIZE * 2);
-    arm_cfft_q31(&arm_cfft_sR_q31_len1024, fftBufferA, 0, 1);
+    DSP_FFT_applyZeroPaddingAndWindowComplexQ15(storageBuffer[bufferIdxToUse], inputBuffer);
+    arm_q15_to_q31(inputBuffer, fftBuffer, FFT_SIZE * 2);
+    arm_shift_q31(fftBuffer, FFT_SCALING,  fftBuffer, FFT_SIZE * 2);
+    arm_cfft_q31(&arm_cfft_sR_q31_len1024, fftBuffer, 0, 1);
+    DSP_FFT_computeMagnitude(fftBuffer, fftMagnitude, FFT_SIZE);
     if (roundCtr != 1) {
-        DSP_FFT_applyZeroPaddingAndWindowComplexQ15(storageBuffer[bufferIdxToUse], fftBuffer);
-        arm_q15_to_q31(fftBuffer, fftBufferB, FFT_SIZE * 2);
-        arm_shift_q31(fftBufferB, FFT_SCALING, fftBufferB, FFT_SIZE * 2);
-        arm_cfft_q31(&arm_cfft_sR_q31_len1024, fftBufferB, 0, 1);
-        DSP_FFT_computeDeltaPhi(fftBufferA, fftBufferB, fftDiffAngle, FFT_SIZE);
-        DSP_FFT_computeMagnitude(fftDiffAngle, fftMagnitude, FFT_SIZE);
-        uint16_t idx = DSP_FFT_findMaximum(fftMagnitude, refIdx - SEARCH_RANGE, refIdx + SEARCH_RANGE);
-        float peak = DSP_FFT_findPeakLocation(fftMagnitude, idx);
-        q31_t angle_re = fftDiffAngle[idx * 2];
-        q31_t angle_im = fftDiffAngle[idx * 2 + 1];
-        float magnitude = fftMagnitude[idx] / 2;
-        DSP_PP_updateFilterState(angle_re, angle_im, magnitude, refIdx);
+        uint32_t idx = DSP_FFT_findMaximumTriplet(fftMagnitude, refIdx - SEARCH_RANGE, refIdx + SEARCH_RANGE);
+        float p = DSP_FFT_findTripletPeakLocation(fftMagnitude, idx);
+        Complex_Float_Triplet_t trp = DSP_FFT_interpolateFloatTriplet(p, fftBuffer, idx);
+        DSP_PP_updateFilterState(atan2f(trp.a.re, trp.a.im), atan2f(trp.b.re, trp.b.im),  atan2f(trp.c.re, trp.c.im), refIdx);
     }
     else {
-        DSP_FFT_computeMagnitude(fftBufferA, fftMagnitude, FFT_SIZE);
         DSP_FFT_displaySpectrum(fftMagnitude, FFT_SIZE);
         refIdx = DSP_FFT_findMaximum(fftMagnitude, MIN_IDX, MAX_IDX);
     }
@@ -125,13 +131,13 @@ static void DSP_FFT_applyZeroPaddingAndWindowComplexQ15(q15_t* pData, q15_t* pBu
     arm_fill_q15(0, &pBuffer[FFT_WINDOW_SIZE], FFT_SIZE * 2 - FFT_WINDOW_SIZE * 2);
 }
 
-static void DSP_FFT_fillBlackmanWindowQ15(q15_t* pBuffer, uint16_t size) {
+static void DSP_FFT_fillBlackmanWindowQ15(q15_t* pBuffer, uint32_t size) {
     for (uint16_t i = 0; i < size; i++) {
         *pBuffer++ = DSP_FFT_computeBlackmanWindow(i, size - 1);
     }
 }
 
-static void DSP_FFT_fillBlackmanWindowComplexQ15(q15_t* pBuffer, uint16_t size) {
+static void DSP_FFT_fillBlackmanWindowComplexQ15(q15_t* pBuffer, uint32_t size) {
     for (uint16_t i = 0; i < size; i++) {
         q15_t value = DSP_FFT_computeBlackmanWindow(i, size - 1);
         *pBuffer++ = value;
@@ -139,23 +145,23 @@ static void DSP_FFT_fillBlackmanWindowComplexQ15(q15_t* pBuffer, uint16_t size) 
     }
 }
 
-static q15_t DSP_FFT_computeBlackmanWindow(uint16_t n, uint16_t size) {
+static q15_t DSP_FFT_computeBlackmanWindow(uint32_t n, uint32_t size) {
     float angle = (2 * M_PI * n) / size;
     return round(32767 * (0.42f - 0.5f * cos(angle) + 0.08f * cos(angle * 2)));
 }
 
-static void DSP_FFT_computeMagnitude(q31_t* pData, float* pBuffer, uint16_t size) {
-    for (uint16_t i = 0; i < size * 2; i += 2) {
+static void DSP_FFT_computeMagnitude(q31_t* pData, float* pBuffer, uint32_t size) {
+    for (uint32_t i = 0; i < size * 2; i += 2) {
         float re = (float) *pData++;
         float im = (float) *pData++;
         *pBuffer++ = log10f(re * re + im * im) * 10 - DB_NORM;
     }
 }
 
-static uint16_t DSP_FFT_findMaximum(float* pData, uint16_t start, uint16_t end) {
+static uint32_t DSP_FFT_findMaximum(float* pData, uint32_t start, uint32_t end) {
     float currMaxMag = -INFINITY;
-    uint16_t currMaxIdx = 0;
-    for (uint16_t i = start; i < end; i++) {
+    uint32_t currMaxIdx = 0;
+    for (uint32_t i = start; i < end; i++) {
         float res = pData[i];
         if (res > currMaxMag) {
             currMaxMag = res;
@@ -165,23 +171,53 @@ static uint16_t DSP_FFT_findMaximum(float* pData, uint16_t start, uint16_t end) 
     return currMaxIdx;
 }
 
-static void DSP_FFT_computeDeltaPhi(q31_t* pDataA, q31_t* pDataB, q31_t* pResult, uint16_t size) {
-    for (uint16_t i = 0; i < size * 2; i += 2) {
-        q31_t reA = pDataA[i] >> PRODUCT_RSHIFT;
-        q31_t imA = pDataA[i + 1] >> PRODUCT_RSHIFT;
-        q31_t reB = pDataB[i] >> PRODUCT_RSHIFT;
-        q31_t imB = pDataB[i + 1] >> PRODUCT_RSHIFT;
-        pResult[i] = reA * reB + imA * imB;
-        pResult[i + 1] = reA * imB - imA * reB;
+static uint32_t DSP_FFT_findMaximumTriplet(float* pData, uint32_t start, uint32_t end) {
+    float currMaxMag = -INFINITY;
+    uint32_t currMaxIdx = 0;
+    for (uint32_t i = start; i < end; i++) {
+        float res = pData[i - TRIPLET_DELTA] + pData[i] + pData[i + TRIPLET_DELTA];
+        if (res > currMaxMag) {
+            currMaxMag = res;
+            currMaxIdx = i;
+        }
+    }
+    return currMaxIdx;
+}
+
+static float DSP_FFT_findTripletPeakLocation(float *pData, uint32_t idx) {
+    float alpha = pData[idx - 1 - TRIPLET_DELTA] + pData[idx - 1] + pData[idx - 1 + TRIPLET_DELTA];
+    float beta = pData[idx - TRIPLET_DELTA] + pData[idx] + pData[idx + TRIPLET_DELTA];
+    float gamma = pData[idx + 1 - TRIPLET_DELTA] + pData[idx + 1] + pData[idx + 1 + TRIPLET_DELTA];
+    return (alpha - gamma) * (2 * alpha - 4 * beta + 2 * gamma);
+}
+
+static float DSP_FFT_linearInterpolation(float p, float a, float b, float c) {
+    if (p > 0) {
+        return (1.0f - p) * b + p * c;
+    } else {
+        return -p * a + (1.0f + p) * b;
     }
 }
 
-static float DSP_FFT_findPeakLocation(float* pData, uint16_t idx) {
-    float alpha = pData[idx - 1];
-    float beta = pData[idx];
-    float gamma = pData[idx + 1];
-    float p = (alpha - gamma) * (2 * alpha - 4 * beta + 2 * gamma);
-    return p + idx;
+static Complex_Float_t DSP_FFT_interpolateFloat(float p, q31_t *pComplexData, int idx) {
+    Complex_Float_t res;
+    float a = (float) pComplexData[2 * (idx - 1)];
+    float b = (float) pComplexData[2 * idx];
+    float c = (float) pComplexData[2 * (idx + 1)];
+    res.re = DSP_FFT_linearInterpolation(p, a, b, c);
+    a = (float) pComplexData[2 * (idx - 1) + 1];
+    b = (float) pComplexData[2 * idx + 1];
+    c = (float) pComplexData[2 * (idx + 1) + 1];
+    res.im = DSP_FFT_linearInterpolation(p, a, b, c);
+    return res;
+}
+
+static Complex_Float_Triplet_t DSP_FFT_interpolateFloatTriplet(float p, q31_t *pComplexData, int idx) {
+    Complex_Float_Triplet_t res;
+    res.a = DSP_FFT_interpolateFloat(p, pComplexData, idx - TRIPLET_DELTA);
+    res.b = DSP_FFT_interpolateFloat(p, pComplexData, idx);
+    res.c = DSP_FFT_interpolateFloat(p, pComplexData, idx + TRIPLET_DELTA);
+    return res;
 }
 
 static void DSP_FFT_displaySpectrum(float *buff, uint32_t size) {
