@@ -57,6 +57,10 @@ static uint32_t DSP_FFT_findMaximumTriplet(float* pData, uint32_t start, uint32_
 
 static float DSP_FFT_findTripletPeakLocation(float *pData, uint32_t idx);
 
+static Complex_Float_t DSP_FFT_computeVectorAngle(Complex_Float_t a, Complex_Float_t c);
+static float DSP_FFT_computeMisalignmentAngle(Complex_Float_t a, Complex_Float_t c);
+static Complex_Float_t DSP_FFT_rotateVector(Complex_Float_t a, float phi);
+
 static void DSP_FFT_displaySpectrum(float *buff, uint32_t size);
 
 static float DSP_FFT_linearInterpolation(float p, float a, float b, float c);
@@ -116,20 +120,22 @@ void DSP_FFT_processDataFromLoop() {
         uint32_t idx = DSP_FFT_findMaximumTriplet(fftMagnitude, refIdx - SEARCH_RANGE, refIdx + SEARCH_RANGE);
         float p = DSP_FFT_findTripletPeakLocation(fftMagnitude, idx);
         Complex_Float_Triplet_t trp = DSP_FFT_interpolateFloatTriplet(p, fftBuffer, idx);
-        float delta_re = (trp.c.re - trp.a.re) / 2.0f;
-        float delta_im = (trp.c.im - trp.a.im) / 2.0f;
-        float x_re = trp.b.re + delta_re;
-        float x_im = trp.b.im + delta_im;
-        float y_re = trp.b.re - delta_re;
-        float y_im = trp.b.im - delta_im;
-        float c_cos = x_re * y_re + x_im * y_im;
-        float c_sin = x_re * y_im - x_im * y_re;
-        DSP_PP_updateFilterState(atan2f(c_sin, c_cos), 0.0f , 0.0f, refIdx);
-        /*
+        float alpha = DSP_FFT_computeMisalignmentAngle(trp.a, trp.c);
+        trp.a = DSP_FFT_rotateVector(trp.a, alpha);
+        trp.c = DSP_FFT_rotateVector(trp.c, -alpha);
+        float beta = DSP_FFT_computeMisalignmentAngle(trp.a, trp.c);
+        Complex_Float_t delta, x, y;
+        delta.re = (trp.c.re - trp.a.re) / 2.0f;
+        delta.im = (trp.c.im - trp.a.im) / 2.0f;
+        x.re = trp.b.re + delta.re;
+        x.im = trp.b.im + delta.im;
+        y.re = trp.b.re - delta.re;
+        y.im = trp.b.im - delta.im;
+        Complex_Float_t dphi = DSP_FFT_computeVectorAngle(x, y);
+        DSP_PP_updateFilterState(atan2f(dphi.im, dphi.re), alpha , beta, refIdx);
         fftMagnitude[idx] = 0;
         fftMagnitude[idx - TRIPLET_DELTA] = 0;
         fftMagnitude[idx + TRIPLET_DELTA] = 0;
-        */
         DSP_FFT_displaySpectrum(fftMagnitude, FFT_SIZE);
     }
     else {
@@ -202,7 +208,7 @@ static float DSP_FFT_findTripletPeakLocation(float *pData, uint32_t idx) {
     float alpha = pData[idx - 1 - TRIPLET_DELTA] + pData[idx - 1] + pData[idx - 1 + TRIPLET_DELTA];
     float beta = pData[idx - TRIPLET_DELTA] + pData[idx] + pData[idx + TRIPLET_DELTA];
     float gamma = pData[idx + 1 - TRIPLET_DELTA] + pData[idx + 1] + pData[idx + 1 + TRIPLET_DELTA];
-    return (alpha - gamma) * (2 * alpha - 4 * beta + 2 * gamma);
+    return (alpha - gamma) / (2.0f * alpha - 4.0f * beta + 2.0f * gamma);
 }
 
 static float DSP_FFT_linearInterpolation(float p, float a, float b, float c) {
@@ -231,6 +237,30 @@ static Complex_Float_Triplet_t DSP_FFT_interpolateFloatTriplet(float p, q31_t *p
     res.a = DSP_FFT_interpolateFloat(p, pComplexData, idx - TRIPLET_DELTA);
     res.b = DSP_FFT_interpolateFloat(p, pComplexData, idx);
     res.c = DSP_FFT_interpolateFloat(p, pComplexData, idx + TRIPLET_DELTA);
+    return res;
+}
+
+static Complex_Float_t DSP_FFT_computeVectorAngle(Complex_Float_t a, Complex_Float_t c) {
+    Complex_Float_t res;
+    res.re = a.re * c.re + a.im * c.im;
+    res.im = a.re * c.im - a.im * c.re;
+    return res;
+}
+
+static float DSP_FFT_computeMisalignmentAngle(Complex_Float_t a, Complex_Float_t c) {
+    Complex_Float_t d, mc;
+    mc.re = -c.re;
+    mc.im = -c.im;
+    d = DSP_FFT_computeVectorAngle(a, mc);
+    return 0.5f * atan2f(d.im, d.re);
+}
+
+static Complex_Float_t DSP_FFT_rotateVector(Complex_Float_t a, float phi) {
+    float c_cos = cosf(phi);
+    float c_sin = sinf(phi);
+    Complex_Float_t res;
+    res.re = a.re * c_cos - a.im * c_sin;
+    res.im = a.im * c_cos + a.re * c_sin;
     return res;
 }
 
