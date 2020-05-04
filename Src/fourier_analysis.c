@@ -5,9 +5,10 @@
 #include "fourier_analysis.h"
 #include "post_processing.h"
 #include "stm32f4xx_hal.h"
+#include "dac_scope.h"
 
 #define FFT_SIZE 1024
-#define NUM_FRAMES_TO_PROCESS 50
+#define NUM_FRAMES_TO_PROCESS 64
 #define FFT_WINDOW_SIZE (FIR_OUTPUT_BLOCK_SIZE * NUM_FRAMES_TO_PROCESS)
 #define DB_NORM 156.0f
 #define TRIPLET_DELTA (FFT_SIZE / (FIR_OUTPUT_BLOCK_SIZE * 2))
@@ -15,7 +16,6 @@
 #define MIN_IDX 400
 #define MAX_IDX 850
 #define FFT_SCALING (-5)
-#define PRODUCT_RSHIFT 8
 #define PASSTHROUGH_RATE 8
 
 typedef struct {
@@ -116,10 +116,24 @@ void DSP_FFT_processDataFromLoop() {
         uint32_t idx = DSP_FFT_findMaximumTriplet(fftMagnitude, refIdx - SEARCH_RANGE, refIdx + SEARCH_RANGE);
         float p = DSP_FFT_findTripletPeakLocation(fftMagnitude, idx);
         Complex_Float_Triplet_t trp = DSP_FFT_interpolateFloatTriplet(p, fftBuffer, idx);
-        DSP_PP_updateFilterState(atan2f(trp.a.re, trp.a.im), atan2f(trp.b.re, trp.b.im),  atan2f(trp.c.re, trp.c.im), refIdx);
+        float delta_re = (trp.c.re - trp.a.re) / 2.0f;
+        float delta_im = (trp.c.im - trp.a.im) / 2.0f;
+        float x_re = trp.b.re + delta_re;
+        float x_im = trp.b.im + delta_im;
+        float y_re = trp.b.re - delta_re;
+        float y_im = trp.b.im - delta_im;
+        float c_cos = x_re * y_re + x_im * y_im;
+        float c_sin = x_re * y_im - x_im * y_re;
+        DSP_PP_updateFilterState(atan2f(c_sin, c_cos), 0.0f , 0.0f, refIdx);
+        /*
+        fftMagnitude[idx] = 0;
+        fftMagnitude[idx - TRIPLET_DELTA] = 0;
+        fftMagnitude[idx + TRIPLET_DELTA] = 0;
+        */
+        DSP_FFT_displaySpectrum(fftMagnitude, FFT_SIZE);
     }
     else {
-        DSP_FFT_displaySpectrum(fftMagnitude, FFT_SIZE);
+        //DSP_FFT_displaySpectrum(fftMagnitude, FFT_SIZE);
         refIdx = DSP_FFT_findMaximum(fftMagnitude, MIN_IDX, MAX_IDX);
     }
     // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
