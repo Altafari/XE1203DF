@@ -17,6 +17,7 @@
 #define MAX_IDX 850
 #define FFT_SCALING (-5)
 #define PASSTHROUGH_RATE 8
+#define HARMONIC_NORM (M_PI / 4.0f)
 
 typedef struct {
     float re, im;
@@ -57,9 +58,10 @@ static uint32_t DSP_FFT_findMaximumTriplet(float* pData, uint32_t start, uint32_
 
 static float DSP_FFT_findTripletPeakLocation(float *pData, uint32_t idx);
 
-static Complex_Float_t DSP_FFT_computeVectorAngle(Complex_Float_t a, Complex_Float_t c);
-static float DSP_FFT_computeMisalignmentAngle(Complex_Float_t a, Complex_Float_t c);
+static Complex_Float_t DSP_FFT_vectorAngle(Complex_Float_t a, Complex_Float_t c);
+static float DSP_FFT_misalignmentAngle(Complex_Float_t a, Complex_Float_t c);
 static Complex_Float_t DSP_FFT_rotateVector(Complex_Float_t a, float phi);
+static float DSP_FFT_angleAndAmplitudeImbalance(Complex_Float_t b, Complex_Float_t d, float *pImbalance);
 
 static void DSP_FFT_displaySpectrum(float *buff, uint32_t size);
 
@@ -120,19 +122,16 @@ void DSP_FFT_processDataFromLoop() {
         uint32_t idx = DSP_FFT_findMaximumTriplet(fftMagnitude, refIdx - SEARCH_RANGE, refIdx + SEARCH_RANGE);
         float p = DSP_FFT_findTripletPeakLocation(fftMagnitude, idx);
         Complex_Float_Triplet_t trp = DSP_FFT_interpolateFloatTriplet(p, fftBuffer, idx);
-        float alpha = DSP_FFT_computeMisalignmentAngle(trp.a, trp.c);
+        float alpha = DSP_FFT_misalignmentAngle(trp.a, trp.c);
         trp.a = DSP_FFT_rotateVector(trp.a, alpha);
         trp.c = DSP_FFT_rotateVector(trp.c, -alpha);
-        float beta = DSP_FFT_computeMisalignmentAngle(trp.a, trp.c);
-        Complex_Float_t delta, x, y;
-        delta.re = (trp.c.re - trp.a.re) / 2.0f;
-        delta.im = (trp.c.im - trp.a.im) / 2.0f;
-        x.re = trp.b.re + delta.re;
-        x.im = trp.b.im + delta.im;
-        y.re = trp.b.re - delta.re;
-        y.im = trp.b.im - delta.im;
-        Complex_Float_t dphi = DSP_FFT_computeVectorAngle(x, y);
-        DSP_PP_updateFilterState(atan2f(dphi.im, dphi.re), alpha , beta, refIdx);
+        alpha = DSP_FFT_misalignmentAngle(trp.a, trp.c);
+        Complex_Float_t delta;
+        delta.re = (trp.c.re - trp.a.re) * HARMONIC_NORM;
+        delta.im = (trp.c.im - trp.a.im) * HARMONIC_NORM;
+        float imb;
+        float dphi = DSP_FFT_angleAndAmplitudeImbalance(trp.b, delta, &imb);
+        DSP_PP_updateFilterState(dphi, alpha , imb, refIdx);
         fftMagnitude[idx] = 0;
         fftMagnitude[idx - TRIPLET_DELTA] = 0;
         fftMagnitude[idx + TRIPLET_DELTA] = 0;
@@ -240,18 +239,18 @@ static Complex_Float_Triplet_t DSP_FFT_interpolateFloatTriplet(float p, q31_t *p
     return res;
 }
 
-static Complex_Float_t DSP_FFT_computeVectorAngle(Complex_Float_t a, Complex_Float_t c) {
+static Complex_Float_t DSP_FFT_vectorAngle(Complex_Float_t a, Complex_Float_t c) {
     Complex_Float_t res;
     res.re = a.re * c.re + a.im * c.im;
     res.im = a.re * c.im - a.im * c.re;
     return res;
 }
 
-static float DSP_FFT_computeMisalignmentAngle(Complex_Float_t a, Complex_Float_t c) {
+static float DSP_FFT_misalignmentAngle(Complex_Float_t a, Complex_Float_t c) {
     Complex_Float_t d, mc;
     mc.re = -c.re;
     mc.im = -c.im;
-    d = DSP_FFT_computeVectorAngle(a, mc);
+    d = DSP_FFT_vectorAngle(a, mc);
     return 0.5f * atan2f(d.im, d.re);
 }
 
@@ -264,6 +263,14 @@ static Complex_Float_t DSP_FFT_rotateVector(Complex_Float_t a, float phi) {
     return res;
 }
 
+static float DSP_FFT_angleAndAmplitudeImbalance(Complex_Float_t b, Complex_Float_t d, float *pImbalance) {
+    float b_mag = sqrt(b.re * b.re + b.im * b.im);
+    float d_mag = sqrt(d.re * d.re + d.im * d.im);
+    Complex_Float_t angl = DSP_FFT_vectorAngle(b, d);
+    float proj_mag = angl.im / b_mag;
+    *pImbalance = angl.re / (b_mag * d_mag);
+    return 2.0f * atan2f(proj_mag, b_mag);
+}
 static void DSP_FFT_displaySpectrum(float *buff, uint32_t size) {
     for (uint32_t i = 0; i < size; i++) {
         displayBuffer[i] = (uint32_t)roundf(buff[i] * 300 + 50000) & 0x0000FFFF;
