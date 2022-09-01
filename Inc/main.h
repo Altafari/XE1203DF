@@ -65,6 +65,7 @@ void Error_Handler(void);
 #define USART_TX_GPIO_Port GPIOA
 #define USART_RX_Pin GPIO_PIN_3
 #define USART_RX_GPIO_Port GPIOA
+#define Scope_sync_Pin GPIO_PIN_6
 #define Scope_sync_GPIO_Port GPIOA
 #define CS_software_signal_SPI_Pin GPIO_PIN_12
 #define CS_software_signal_SPI_GPIO_Port GPIOB

@@ -63,7 +63,6 @@ DMA_HandleTypeDef hdma_memtomem_dma2_stream1;
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 static uint16_t adc1_buffer[ADC_BUFF_LEN];
-static uint16_t adc2_buffer[ADC_BUFF_LEN];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -425,7 +424,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 167;
+  htim2.Init.Period = 334;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -635,12 +634,12 @@ static void MX_GPIO_Init(void)
 
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
 {
-  DSP_FIR_processBuffer(adc1_buffer, adc2_buffer);
+  DSP_FIR_processBuffer(adc1_buffer);
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-    DSP_FIR_processBuffer(&adc1_buffer[ADC_BUFF_LEN / 2], &adc2_buffer[ADC_BUFF_LEN / 2]);
+    DSP_FIR_processBuffer(&adc1_buffer[ADC_BUFF_LEN / 2]);
 }
 
 /* USER CODE END 4 */
