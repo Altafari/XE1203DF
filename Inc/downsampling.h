@@ -1,7 +1,7 @@
 #ifndef __DOWNSAMPLING_H
 #define __DOWNSAMPLING_H
 
-#include<inttypes.h>
+#include <inttypes.h>
 
 #define FIR_STAGE1_N_TAPS 32
 #define FIR_STAGE2_N_TAPS 128
