@@ -1,6 +1,8 @@
 #ifndef DAC_SCOPE_H_
 #define DAC_SCOPE_H_
 
+#define Scope_sync_Pin GPIO_PIN_6
+
 #include "stm32f4xx_hal.h"
 
 void DACScope_init(DAC_HandleTypeDef* hdac, DMA_HandleTypeDef* h_dma_mem);

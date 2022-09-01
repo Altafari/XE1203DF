@@ -1,86 +1,100 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<Project>
-<ProjectName>D:\Projects\XE1203DF\\XE1203DF</ProjectName>
-<ProjectNature>C</ProjectNature> 
-<CMSIS>..\Drivers\CMSIS</CMSIS>
-<HAL_Driver>C:\Users\DEFAULTUSER\STM32Cube\Repository\STM32Cube_FW_F4_V1.21.0\Drivers\CMSIS</HAL_Driver>
-<Toolchain>SW4STM32</Toolchain>
-<Version>0</Version>
-
-<filestoremove>
-    <file>
-    </file>
-</filestoremove>
-
-<inctoremove>
-	<Aincludes>
-	   <include></include>
-    </Aincludes>
-	<Cincludes>
-    </Cincludes>
-</inctoremove>
-
-<configs>
-  <config>
-    <name>XE1203DF</name>				
-    <device>STM32F446RETx</device>		 
-    <heapSize>0x200</heapSize>
-    <stackSize>0x400</stackSize>
-    
-    	<board>NUCLEO-F446RE</board>
-			
-    <usedDebug>true</usedDebug>
-    	<debugprobe>swd</debugprobe>
-    <optimization>6</optimization>
-    <icfloc>0</icfloc>
-    <Adefines>
-        <define></define>
-    </Adefines>   
-
-    <UsedFreeRTOS></UsedFreeRTOS>
-    <Aincludes>
-
-
-	    	<include></include>
-    </Aincludes>
-    <Cdefines>
-        <define>__weak=__attribute__((weak))</define>
-        <define>__packed=__attribute__((__packed__))</define>
-    </Cdefines>
-    <definestoremove>
-        <Adefines>
-            <define></define>
-        </Adefines>
-        <Cdefines>
-            <define>USE_FULL_LL_DRIVER</define>
-            <define>MBEDTLS_CONFIG_FILE=&quot;mbedtls_config.h&quot;</define>
-        </Cdefines>         
-    </definestoremove>
-    
-	<Cincludes>
-	   <include>..\Inc</include>
-	   <include>..\Drivers\STM32F4xx_HAL_Driver\Inc</include>
-	   <include>..\Drivers\STM32F4xx_HAL_Driver\Inc\Legacy</include>
-	   <include>..\Drivers\CMSIS\Device\ST\STM32F4xx\Include</include>
-	   <include>..\Drivers\CMSIS\Include</include>
-
-    </Cincludes>
-      </config>
-    </configs> 
-
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<ScratchFile FileVersion="3.0">
+  <FileVersion>3.0</FileVersion>
+  <Workspace>
+    <WorkspaceType>Single-project</WorkspaceType>
+    <WorkspacePath>/home/omus/STM32CubeIDE/workspace_1.10.0/XE1203DF/</WorkspacePath>
     <underRoot>true</underRoot>
-    	<copyAsReference>false</copyAsReference>
- 
-	  		<sourceEntries>
-		    	<sourceEntry>
-		    		<name>Inc</name>
-		    	</sourceEntry>
-                <sourceEntry>
-                        <name>Src</name>
-                </sourceEntry>
-		    	<sourceEntry>
-		    		<name>Drivers</name>
-		    	</sourceEntry>
-		    </sourceEntries>
-
-</Project>
+    <TrustZone>0</TrustZone>
+    <HAL_Driver>/home/omus/STM32Cube/Repository//STM32Cube_FW_F4_V1.27.1</HAL_Driver>
+    <CMSIS>Drivers/CMSIS</CMSIS>
+    <Toolchain>STM32CubeIDE</Toolchain>
+    <IocFile>XE1203DF.ioc</IocFile>
+    <Project>
+      <ProjectName>XE1203DF</ProjectName>
+      <ProjectNature>C</ProjectNature>
+      <Secure/>
+      <filestoremove>
+        <file>
+          <name>stm32f4xx_it.h</name>
+        </file>
+        <file>
+          <name>../Src/stm32f4xx_nucleo.c</name>
+        </file>
+        <file>
+          <name>stm32f4xx_hal_conf.h</name>
+        </file>
+        <file>
+          <name>main.h</name>
+        </file>
+      </filestoremove>
+      <sourceEntriesToRemove>
+        <sourceEntry/>
+      </sourceEntriesToRemove>
+      <configs>
+        <config>
+          <name>XE1203DF</name>
+          <mainSourceRepo>Src</mainSourceRepo>
+          <sourceStructure>Basic</sourceStructure>
+          <device>STM32F446RETx</device>
+          <cpucore>Arm Cortex-M4</cpucore>
+          <fpu>SP</fpu>
+          <memories>
+            <memory access="xrw" name="RAM" size="128" start="0x20000000"/>
+            <memory access="rx" name="FLASH" size="512" start="0x8000000"/>
+          </memories>
+          <startup>/home/omus/STM32Cube/Repository/STM32Cube_FW_F4_V1.27.1/Drivers/CMSIS/Device\ST\STM32F4xx\Source\Templates\gcc\startup_stm32f446xx.s</startup>
+          <LinkSettings>
+            <LinkAdditionalLibs/>
+          </LinkSettings>
+          <heapSize>0x200</heapSize>
+          <stackSize>0x400</stackSize>
+          <board>NUCLEO-F446RE</board>
+          <debugprobe>swd</debugprobe>
+          <optimization>3</optimization>
+          <Aincludes>
+            <include/>
+          </Aincludes>
+          <Adefines/>
+          <Cdefines>
+            <define>USE_HAL_DRIVER</define>
+            <define>STM32F446xx</define>
+          </Cdefines>
+          <Ldefines/>
+          <Cincludes>
+            <include>Inc</include>
+            <include>Drivers/STM32F4xx_HAL_Driver/Inc</include>
+            <include>Drivers/STM32F4xx_HAL_Driver/Inc/Legacy</include>
+            <include>Drivers/CMSIS/Device/ST/STM32F4xx/Include</include>
+            <include>Drivers/CMSIS/Include</include>
+          </Cincludes>
+          <definestoremove>
+            <Adefines/>
+            <Cdefines>
+              <define>USE_FULL_LL_DRIVER</define>
+              <define>MBEDTLS_CONFIG_FILE="mbedtls_config.h"</define>
+              <define>USE_FULL_ASSERT=1U</define>
+            </Cdefines>
+            <Ldefines/>
+          </definestoremove>
+          <inctoremove>
+            <Aincludes>
+              <include/>
+            </Aincludes>
+            <Cincludes/>
+          </inctoremove>
+        </config>
+      </configs>
+      <copyAsReference>false</copyAsReference>
+      <sourceEntries>
+        <sourceEntry>
+          <name>Src</name>
+        </sourceEntry>
+        <sourceEntry>
+          <name>Drivers</name>
+        </sourceEntry>
+      </sourceEntries>
+      <Groups/>
+    </Project>
+  </Workspace>
+</ScratchFile>

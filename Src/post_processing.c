@@ -1,11 +1,12 @@
 #include <math.h>
 #include <string.h>
+#include <stdio.h>
 #include "stm32f4xx_hal.h"
 #include "post_processing.h"
 
 static char textBuffer[256];
 static UART_HandleTypeDef* hUart;
-static const float rad2deg = 180.0f / M_PI;
+// static const float rad2deg = 180.0f / M_PI;
 
 void DSP_PP_init(UART_HandleTypeDef* huart) {
     hUart = huart;
