@@ -2,7 +2,7 @@
 #include "dac_scope.h"
 
 //#define NUM_PERIODS 5.0f
-#define BUFF_LEN 2048
+#define BUFF_LEN 32
 #define CURRENT_LO 1
 #define UPDATED_LO 2
 #define UPDATED_HI 3

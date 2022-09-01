@@ -1,9 +1,9 @@
 #include <assert.h>
-#include "stm32f446xx.h"
 #include "arm_math.h"
-#include "downsampling.h"
-#include "fourier_analysis.h"
 #include "stm32f4xx_hal.h"
+#include "downsampling.h"
+#include "dac_scope.h"
+#include "fourier_analysis.h"
 
 static arm_fir_decimate_instance_q15 fir_stage1_i;
 static arm_fir_decimate_instance_q15 fir_stage1_q;
@@ -45,8 +45,8 @@ static void multiply_f0_convert_to_q15(uint16_t* pIn, q15_t* pOutI, q15_t* pOutQ
 static void compose_iq_interlaced(q15_t* pOut, q15_t* pInI, q15_t* pInQ, uint16_t nSamples);
 
 void DSP_FIR_init() {
-  assert(FIR_OUTPUT_BLOCK_SIZE > 8);
-  assert(FIR_OUTPUT_BLOCK_SIZE % 8 == 0);
+    assert(FIR_OUTPUT_BLOCK_SIZE > 8);
+    assert(FIR_OUTPUT_BLOCK_SIZE % 8 == 0);
     arm_fir_decimate_init_q15(
         &fir_stage1_i,
         FIR_STAGE1_N_TAPS,
@@ -125,6 +125,7 @@ void DSP_FIR_processBuffer(uint16_t* pBuff) {
         FIR_OUTPUT_BLOCK_SIZE * 2);
     //DSP_FFT_receiveData(output_buffer_i, output_buffer_q);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
+    DACScope_startDisplay((uint32_t*)magnitude_buffer, 16);
 }
 
 static void multiply_f0_convert_to_q15(uint16_t* pIn, q15_t* pOutI, q15_t* pOutQ, uint16_t nSamples) {
