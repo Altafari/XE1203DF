@@ -38,11 +38,11 @@ static q15_t fir_stage2_state_q[FIR_STAGE2_BLOCK_SIZE + FIR_STAGE2_N_TAPS - 1];
 static q15_t output_buffer_i[FIR_OUTPUT_BLOCK_SIZE];
 static q15_t output_buffer_q[FIR_OUTPUT_BLOCK_SIZE];
 
-static q15_t filtered_iq_buffer[FIR_OUTPUT_BLOCK_SIZE * 2];
-static q15_t magnitude_buffer[FIR_OUTPUT_BLOCK_SIZE];
+static q31_t filtered_iq_buffer[FIR_OUTPUT_BLOCK_SIZE * 2];
+static q31_t magnitude_buffer[FIR_OUTPUT_BLOCK_SIZE];
 
 static void multiply_f0_convert_to_q15(uint16_t* pIn, q15_t* pOutI, q15_t* pOutQ, uint16_t nSamples);
-static void compose_iq_interlaced(q15_t* pOut, q15_t* pInI, q15_t* pInQ, uint16_t nSamples);
+static void compose_iq_interlaced(q31_t* pOut, q15_t* pInI, q15_t* pInQ, uint16_t nSamples);
 
 void DSP_FIR_init() {
     assert(FIR_OUTPUT_BLOCK_SIZE > 8);
@@ -117,19 +117,19 @@ void DSP_FIR_processBuffer(uint16_t* pBuff) {
         filtered_iq_buffer,
         output_buffer_i,
         output_buffer_q,
-        FIR_OUTPUT_BLOCK_SIZE * 2);
+        FIR_OUTPUT_BLOCK_SIZE);
 
-    arm_cmplx_mag_q15(
+    arm_cmplx_mag_q31(
         filtered_iq_buffer,
         magnitude_buffer,
-        FIR_OUTPUT_BLOCK_SIZE * 2);
+        FIR_OUTPUT_BLOCK_SIZE);
     //DSP_FFT_receiveData(output_buffer_i, output_buffer_q);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
     DACScope_startDisplay((uint32_t*)magnitude_buffer, 16);
 }
 
 static void multiply_f0_convert_to_q15(uint16_t* pIn, q15_t* pOutI, q15_t* pOutQ, uint16_t nSamples) {
-    for (uint16_t i = 0; i < nSamples; i += 8) {
+    for (uint16_t i = 0; i < nSamples; i += 4) {
         *pOutI++ = ((int16_t)(*pIn++) - DC_LEVEL) << 3;
         *pOutQ++ = ((int16_t)(*pIn++) - DC_LEVEL) << 3;
         *pOutI++ = (DC_LEVEL - (int16_t)(*pIn++)) << 3;
@@ -141,15 +141,15 @@ static void multiply_f0_convert_to_q15(uint16_t* pIn, q15_t* pOutI, q15_t* pOutQ
     }
 }
 
-static void compose_iq_interlaced(q15_t* pOut, q15_t* pInI, q15_t* pInQ, uint16_t nSamples) {
-    for (uint16_t i = 0; i < nSamples; i += 8) {
-        *pOut++ = *pInI++;
-        *pOut++ = *pInQ++;
-        *pOut++ = *pInI++;
-        *pOut++ = *pInQ++;
-        *pOut++ = *pInI++;
-        *pOut++ = *pInQ++;
-        *pOut++ = *pInI++;
-        *pOut++ = *pInQ++;
+static void compose_iq_interlaced(q31_t* pOut, q15_t* pInI, q15_t* pInQ, uint16_t nSamples) {
+    for (uint16_t i = 0; i < nSamples; i += 4) {
+        *pOut++ = *pInI++ << 16;
+        *pOut++ = *pInQ++ << 16;
+        *pOut++ = *pInI++ << 16;
+        *pOut++ = *pInQ++ << 16;
+        *pOut++ = *pInI++ << 16;
+        *pOut++ = *pInQ++ << 16;
+        *pOut++ = *pInI++ << 16;
+        *pOut++ = *pInQ++ << 16;
     }
 }
