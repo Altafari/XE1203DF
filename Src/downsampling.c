@@ -3,7 +3,6 @@
 #include "stm32f4xx_hal.h"
 #include "downsampling.h"
 #include "dac_scope.h"
-#include "fourier_analysis.h"
 
 static arm_fir_decimate_instance_q15 fir_stage1_i;
 static arm_fir_decimate_instance_q15 fir_stage1_q;
@@ -125,11 +124,12 @@ void DSP_FIR_processBuffer(uint16_t* pBuff) {
         FIR_OUTPUT_BLOCK_SIZE);
     //DSP_FFT_receiveData(output_buffer_i, output_buffer_q);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
-    DACScope_startDisplay((uint32_t*)magnitude_buffer, 16);
+    DACScope_startDisplay((uint32_t*)magnitude_buffer, 32);
 }
 
 static void multiply_f0_convert_to_q15(uint16_t* pIn, q15_t* pOutI, q15_t* pOutQ, uint16_t nSamples) {
     for (uint16_t i = 0; i < nSamples; i += 4) {
+      // TODO: compute DC level here
         *pOutI++ = ((int16_t)(*pIn++) - DC_LEVEL) << 3;
         *pOutQ++ = ((int16_t)(*pIn++) - DC_LEVEL) << 3;
         *pOutI++ = (DC_LEVEL - (int16_t)(*pIn++)) << 3;
